@@ -1,32 +1,23 @@
 #+TITLE:     Greg Tucker-Kellogg's Emacs configuration
-#+PROPERTY: results silent 
-#+DESCRIPTION:
-#+KEYWORDS:
-#+LANGUAGE:  en
-#+OPTIONS:   H:3 num:nil toc:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
-#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
-#+EXPORT_SELECT_TAGS: export
-#+EXPORT_EXCLUDE_TAGS: noexport
-#+LINK_UP:   
-#+LINK_HOME: 
-#+XSLT:
 
 * Front matter                                                :ignoreheading:
 #+AUTHOR:    Greg Tucker-Kellogg
 #+EMAIL:     gtuckerkellogg@gmail.com
+#+DATE:      2012-06-13 Wed
 #+DESCRIPTION:
 #+KEYWORDS:
-#+LATEX: \usepackage{gtuckerkellogg}
 #+LANGUAGE:  en
 #+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
 #+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
-#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+INFOJS_OPT: view:nil toc:t ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
 #+EXPORT_SELECT_TAGS: export
 #+EXPORT_EXCLUDE_TAGS: noexport
 #+LINK_UP:   
 #+LINK_HOME: 
 #+XSLT:
-
+#+PROPERTY: results silent  
+#+PROPERTY: tangle yes 
+#+LATEX_HEADER: \usepackage{gtuckerkellogg} 
 
 * General information
 
@@ -36,6 +27,24 @@
         user-mail-address "gtuckerkellogg@gmail.com")
   (require 'cl) 
 #+END_SRC
+
+* General configuation
+
+** Enable minibuffer completion
+
+#+begin_src emacs-lisp
+(icomplete-mode 1)
+#+end_src
+
+** French spacing
+I'm trying to wean myself off the old school double spacing for
+sentence ending.  Also in LaTeX.
+
+#+begin_src emacs-lisp
+  (setq sentence-end-double-space nil)
+#+end_src
+
+
 
 * Some functions
 
@@ -47,8 +56,18 @@ These are almost trivial functions, but I find them useful
   
   (defun  gtk/emacs-subdir (d)
     (expand-directory-name (concat user-emacs-directory d )))
+  
+  (defun turn-off-cua-mode ()
+    (cua-mode -1))
 #+END_SRC
 
+
+* LaTeX
+
+#+begin_src emacs-lisp :tangle no :eval no
+  (setq latex-run-command "lualatex") 
+  (setq latex-command "lualatex") 
+#+end_src
 
 * File configuration
 
@@ -57,7 +76,7 @@ These are almost trivial functions, but I find them useful
 #name: other-lisp
 #+begin_src emacs-lisp
   (defvar dropbox-root  
-   (convert-standard-filename "~/Dropbox///")
+   (convert-standard-filename "~/Dropbox/")
     "This is where DropBox should be mounted on all of my systems")
     
   (setq user-emacs-directory (convert-standard-filename "~/.emacs.d/"))
@@ -78,15 +97,32 @@ These are almost trivial functions, but I find them useful
   (starter-kit-load "python" "python")
   (starter-kit-load "org")
   (starter-kit-load "eshell")
-  (add-to-list 'load-path (gtk/emacs-subdir "org-mode/contrib/lisp") 'append) 
 #+end_src
 
+I want to make sure the contrib directory is available, since I use an
+updated version of htmlize.el to fontify the exported code
+
+#+name contribs
+#+begin_src emacs-lisp
+  (add-to-list 'load-path (gtk/emacs-subdir "org-mode/contrib/lisp"))  
+#+end_src
 
 I want to use clojure for my usual inferior lisp environment
 
 #+begin_src emacs-lisp
-  (setq inferior-lisp-program "clj")  
+  (setq inferior-lisp-program "lein repl")   
 #+end_src
+
+#+begin_src emacs-lisp :tangle no
+(defun org-babel-execute:clojure (body params)
+  "Evaluate a block of Clojure code with Babel."
+  (concat "=> "
+          (if (fboundp 'slime-eval)
+              (slime-eval `(swank:interactive-eval-region ,body))
+           (if (fboundp 'lisp-eval-string)
+             (lisp-eval-string body)
+              (error "You have to start a clojure repl first!")))))
+  #+end_src
 
 * Some modes
 
@@ -134,41 +170,27 @@ I have some keys that I'd like to be always bound
 
 
 
-** Frame based behavior
-
-I'd like frame based things to work in emacs as well as they do in Aquamacs.
-
-#+name: gtk-frame-keys
-#+BEGIN_SRC emacs-lisp
-  (require 'frame-cmds)
-  (global-set-key "\M-=" 'tile-frames-horizontally)
-  
-#+END_SRC
-
-
-
 * Org mode 
+
+The ever present Org mode is where most of my note-taking, GTD-ing,
+and writing takes place.
 
 ** General Org options
 
-Where the org files go
+Where the Org files go
 
 #+begin_src emacs-lisp   
   (setq org-directory (expand-directory-name (concat dropbox-root "_support/org")))
-  (setq org-agenda-files (expand-file-name (concat org-directory "/agenda-files")))
 #+end_src  
 
-I use the diary to bring stuff in from the MacOS iCal
-
-#+BEGIN_SRC emacs-lisp
-  (setq org-agenda-include-diary t)
-  (setq diary-file (expand-file-name (concat dropbox-root "/diary"))) 
-#+end_src 
 
 Org miscellany 
 
 #+begin_src emacs-lisp
+  (add-hook 'org-mode-hook 'turn-on-auto-fill)  
+  (add-hook 'org-mode-hook 'turn-off-cua-mode)  
   (setq org-insert-mode-line-in-empty-file t)
+  (setq org-startup-indented t)
   (setq org-completion-use-ido t)
   (setq org-outline-path-complete-in-steps nil)
 #+end_src
@@ -178,34 +200,61 @@ Org miscellany
 ** Modules
 
 #+begin_src emacs-lisp
+  (require 'org)
   (add-to-list 'org-modules 'org-latex)
   (add-to-list 'org-modules 'org-mac-iCal) 
   (add-to-list 'org-modules 'org-habit)
-  (org-reload)
+  (add-to-list 'org-modules 'org-taskjuggler)  
+  
 #+end_src
 
-** File locations
+I want the habits display to be a little to the right. I'll use the
+Chinese character 今 for today, and a ☺ for completed habits
+
+#+begin_src emacs-lisp
+  (setq  org-habit-completed-glyph 9786 
+         org-habit-graph-column 80
+         org-habit-show-habits-only-for-today t 
+         org-habit-today-glyph 20170  
+         org-hide-leading-stars nil
+         org-pretty-entities t)
+#+end_src
+
+** Org file locations
 
 #+name: file-locs
 #+begin_src emacs-lisp
      (defvar my/inbox
        (expand-file-name (concat dropbox-root "/_inbox/inbox.org"))
-         "My inbox"
-         )
+         "My inbox")
      (setq org-default-notes-file my/inbox)
-     
-     (defvar my/gtd
-       (expand-file-name (concat org-directory "/gtd.org"))
-         "My main tasks list"
-         )
+
+     (defvar my/gtd 
+        (expand-file-name (concat org-directory "/gtd.org")) 
+          "My main tasks list") 
+
+     (defvar my/organizer
+        (expand-file-name (concat org-directory "/organizer.org")) 
+          "My main tasks list") 
      
      (defvar my/journal
        (expand-file-name (concat dropbox-root "/_inbox/journal.org"))
-         "My journal"
-         )
+         "My journal")
 #+end_src
 
 ** The agenda
+
+#+begin_src emacs-lisp
+  (setq org-agenda-files (expand-file-name (concat org-directory "/agenda-files"))) 
+#+end_src
+
+I use the diary to bring stuff in from the MacOS iCal
+
+#+BEGIN_SRC emacs-lisp
+  (setq org-agenda-include-diary t) 
+  (setq diary-file (expand-file-name (concat dropbox-root "/diary"))) 
+#+end_src 
+
 
 #+name agenda-commands
 #+begin_src emacs-lisp
@@ -214,79 +263,18 @@ Org miscellany
                 ((org-agenda-mode-hook
                   (lambda ()
                     (org-mac-iCal)))))))
-       
-       ;;; The essentials
-  
-       
-  
 #+end_src
 
 ** My GTD setup
 
-#name: GTD
+*** My Next Action list setup
+
+#+name: next-actions
 #+begin_src emacs-lisp
   (defun GTD ()
     "Go to my main GTD next action lists"
     (interactive)
     (find-file my/gtd))
-  
-#+end_src
-
-** Key bindings in Org
-
-#+begin_src emacs-lisp
-  (global-set-key (kbd "<f9>") 'GTD)
-  (global-set-key (kbd "<f10>") 'org-cycle-agenda-files)
-  (global-set-key "\C-cl" 'org-store-link)
-  (global-set-key "\C-ca" 'org-agenda)
-  (global-set-key "\C-cj" 'org-clock-goto)
-  (global-set-key "\C-cb" 'org-iswitchb)
-  (global-set-key "\C-cc" 'org-capture)
-  (global-set-key "\C-ci" 'org-insert-link)
-  (global-set-key "\C-c'" 'org-cycle-agenda-files)
-  (define-key global-map "\C-cx"
-    (lambda () (interactive) (org-capture nil "i"))
-    )
-
-#+end_src
-
-** Org capture behavior
-
-#+begin_src emacs-lisp
-  (setq org-capture-templates
-        '(("t" "Todo items" entry (file+headline my/gtd "Unfiled Tasks")
-           "* TODO %?\n  %i\n  %a")
-          ("i" "Into the inbox" entry (file+datetree my/inbox)
-           "* %?\n\nEntered on %U\n  %i\n  %a" )
-          ("j" "Journal entries" entry (file+datetree my/journal)
-           "* %?\n\nEntered on %U\n  %i\n  %a" )
-          ("w" "Tweets!" plain (file+datetree my/journal)
-           "* %?  Entered on %U\n  %i\n" )
-          ))
-       
-       
-#+end_src 
- 
-I use David Allen's "Areas of Focus" for general categories across org stuff
-
-#+begin_src emacs-lisp
-  (setq org-global-properties
-        '(("CATEGORY_ALL" 
-           . "Family Finance Work Health Relationships Self Explore Other")))
-#+end_src 
- 
-#+begin_src emacs-lisp
-  (setq org-columns-default-format "%35ITEM %TODO %3PRIORITY %10CATEGORY %TAGS")
-       
-  (setq org-refile-use-outline-path t
-        org-refile-use-cache t)
-       
-  (add-hook 'org-mode-hook 'turn-on-auto-fill)
-       
-  (setq org-refile-targets '((my/gtd :maxlevel . 2 )
-                             (my/gtd :tag . "TAG" )
-                             ))
-       
   (setq org-todo-keywords
              '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!/!)")
                (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)")))
@@ -310,9 +298,66 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
                 ("DONE" ("WAITING") ("CANCELLED") ("HOLD")))))
        
 #+end_src
+
+*** Categories as Areas of focus
+
+I use David Allen's "Areas of Focus" for general categories across org stuff
+
+#+begin_src emacs-lisp
+  (setq org-global-properties
+        '(("CATEGORY_ALL" 
+           . "Family Finance Work Health Relationships Self Explore Other")))
+  (setq org-columns-default-format "%35ITEM %TODO %3PRIORITY %10CATEGORY %TAGS") 
+#+end_src 
+
+
+** Key bindings in Org
+
+#+begin_src emacs-lisp
+  (global-set-key (kbd "<f9>") 'GTD)
+  (global-set-key (kbd "<f10>") 'org-cycle-agenda-files)
+  (global-set-key "\C-cl" 'org-store-link)
+  (global-set-key "\C-ca" 'org-agenda)
+  (global-set-key "\C-cj" 'org-clock-goto)
+  (global-set-key "\C-cb" 'org-iswitchb)
+  (global-set-key "\C-cc" 'org-capture)
+  (global-set-key "\C-ci" 'org-insert-link)
+  (global-set-key "\C-c'" 'org-cycle-agenda-files)
+  (define-key global-map "\C-cx"
+    (lambda () (interactive) (org-capture nil "i")))
+#+end_src
+
+** Org capture behavior
+
+#+begin_src emacs-lisp
+  (setq org-capture-templates
+        '(("t" "Todo items" entry (file+headline my/gtd "Unfiled Tasks")
+           "* TODO %?\n  %i\n  %a")
+          ("i" "Into the inbox" entry (file+datetree my/inbox)
+           "* %?\n\nEntered on %U\n  %i\n  %a" )
+          ("j" "Journal entries" entry (file+datetree my/journal)
+           "* %?\n\nEntered on %U\n  %i\n  %a" )
+          ("w" "Tweets!" plain (file+datetree my/journal)
+           "* %?  Entered on %U\n  %i\n" )
+          ))
+#+end_src 
+ 
+ 
+** Archiving and refiling
+
+#+begin_src emacs-lisp
+  (setq org-refile-use-outline-path t
+        org-refile-use-cache t)
+       
+  (setq org-refile-targets '((my/gtd :maxlevel . 2 )
+                             (my/gtd :tag . "TAG" )
+                             ))
+#+end_src
   
 
-- This is yasnippet behavior, cribbed from emacswiki.  
+** Yasnippet
+
+This is yasnippet behavior, cribbed from emacswiki.  
 
 #+begin_src emacs-lisp
   
@@ -331,41 +376,53 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
 #+end_src
 
 
-** time logging
+** Time logging
 
 #+begin_src emacs-lisp
   (setq org-clock-persist 'history)
   (org-clock-persistence-insinuate)   
+  (setq org-log-into-drawer t) 
 #+end_src
 
 
 ** LaTeX export 
 
+I use LaTeX export a /lot/, and really want it to work well.
+
 #+begin_src emacs-lisp
-  
   (add-hook 'org-mode-hook 'turn-on-org-cdlatex)
-;;  (require 'org-latex) 
-  
-  
-  ;; I much prefer the minted style of code listings over the listings package.
-  ;; It would be nice to use pygmentize instead of htmlize on the
-  ;; back end of org-mode HTML export
-  
+#+end_src
+
+*** Minted listings
+
+I much prefer the minted style of code listings over the listings
+package.  It would be nice to use pygmentize instead of htmlize on
+the back end of org-mode HTML export.  As it is I have a default
+configuration string for minted that gets put in all my org LaTeX exports
+   
+#+begin_src emacs-lisp
   (setq org-export-latex-listings 'minted)
-  
   (setq org-export-latex-minted-options
-        '(("linenos" "t") 
+        '(("linenos" "true") 
           ("bgcolor" "bg")  ;; this is dependent on the color being defined
           ("stepnumber" "1")
           ("numbersep" "10pt")
           )
         )
-  
   (setq my-org-minted-config (concat "%% minted package configuration settings\n"
+                                     "\\usepackage{minted}\n"
                                      "\\definecolor{bg}{rgb}{0.97,0.97,0.97}\n" 
-                                      "\\usemintedstyle{default}\n"                                   
+                                      "\\usemintedstyle{trac}\n"                                   
                                       ))
-  
+#+end_src
+
+*** Different LaTeX engines
+
+I want the option of running the three major LaTeX flavors
+(pdflatex, xelatex, or lualatex) and have them all work.  LuaLaTeX is
+my preferred default.
+
+#+begin_src emacs-lisp
   (defun my-org-tex-cmd ()
     "set the correct type of LaTeX process to run for the org buffer"
     (let ((case-fold-search t))
@@ -375,179 +432,158 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
         "lualatex"
       ))
     )
-  
-  ;; (defun my-auto-tex-process ()
-  ;; "When exporting from .org with latex, automatically run latex,
-  ;;  pdflatex, or xelatex as appropriate, using latexmk."
-  ;; (list (concat "latexmk -pdflatex=\"" 
-  ;;            (symbol-name (my-org-tex-cmd)) 
-  ;;            " -shell-escape -interaction nonstopmode\" -pdf -f -quiet %f" ))   
-  ;;   )
-  
-  
-  (defun my-auto-tex-process ()
+#+end_src
+
+I use ~latexmk~ to generate the PDF, depending on the engine
+
+#+begin_src emacs-lisp
+  (defun set-org-latex-to-pdf-process ()
     "When exporting from .org with latex, automatically run latex,
-  pdflatex, or xelatex as appropriate, using latexmk."
-    (let ((which-tex (my-org-tex-cmd)))
-      (setq org-latex-to-pdf-process 
-            (list
-             (cond 
-              ((equal which-tex "pdflatex")
-               "latexmk -pdflatex='pdflatex -shell-escape -interaction nonstopmode' -pdf -f %f")
-              ((equal which-tex "xelatex")
-               "latexmk -pdflatex='xelatex -shell-escape -interaction nonstopmode' -pdf -f %f")
-              ((equal which-tex "lualatex")
-               "latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -f -pdf %f")
-              ) 
-             )
-            )
-      ) 
-    )
-  
-  (add-hook 'org-export-latex-after-initial-vars-hook 'my-auto-tex-process)
-  
-  (setq org-log-into-drawer t)
-  
-  ;;(require 'org-mac-link-grabber)
-  ;;(add-hook 'org-mode-hook (lambda ()
-  ;;   (define-key org-mode-map (kbd "C-c g") 'omlg-grab-link)))
-  
-  
-  (defun my-auto-tex-packages ()
-    "Automatically set tex packages to include"
-     (setq org-export-latex-default-packages-alist
-                '(("" "etex" nil)
-                  ("" "fixltx2e" nil)  ;; not sure why this is included
-                  ("" "longtable" nil)
-                  ("" "float" nil)
-                  ("" "graphicx" t)
-                  ("" "wrapfig" nil)
-                  ("" "soul" t)
-                  ("" "marvosym" t)
-                  ("" "wasysym" t)
-                  ("" "latexsym" t)
-                  ("" "amssymb" t)
-                  ("" "tabularx" nil)
-                  ("" "booktabs" nil)
-                  ("" "xcolor" nil)
-                  "\\tolerance=1000"
-                  )
-                )
-    (let ((my-org-export-latex-packages-alist 
-           '(("pdflatex" . (("AUTO" "inputenc" t)
-                          ("T1" "fontenc" t)
-                          ("" "textcomp" t)
-                          ("" "minted" nil)
-                          ("" "hyperref"  nil))) 
-             ("xelatex" . (("" "minted" nil)
-                         ("" "url" t)
-                         ("" "fontspec" t)
-                         ("" "xunicode" t)
-                         ("" "hyperref" nil)
-                         ) )
-             ("lualatex" . (("" "minted" nil)
-                         ("" "url" t)
-                         ("" "fontspec" t)
-                         ("" "hyperref" nil)
-                         ("" "metalogo" t)
-                         ) )
-             ))
-          (which-tex (my-org-tex-cmd)))
-      (if (car (assoc which-tex my-org-export-latex-packages-alist))
-          (setq org-export-latex-packages-alist (cdr (assoc which-tex my-org-export-latex-packages-alist)))
-        (warn "no packages")
-        )
+     pdflatex, or xelatex as appropriate, using latexmk."
+    (setq org-latex-to-pdf-process
+          (list (concat "latexmk -pdflatex='" 
+                        (my-org-tex-cmd)
+                        " -shell-escape -interaction nonstopmode' -pdf -f  %f" ))        
+          )    
       )
-    )
   
-  ;; backend aware export preprocess hook
-  (defun sa-org-export-preprocess-hook ()
-    "My backend aware export preprocess hook."
-    (save-excursion
-      (when (eq org-export-current-backend 'latex)
-        ;; ignoreheading tag for bibliographies and appendices
-        (let* ((tag "ignoreheading"))
-          (org-map-entries (lambda ()
-                             (delete-region (point-at-bol) (point-at-eol)))
-                           (concat ":" tag ":"))))))
-  
-  (defun my/org-export-ignoreheadings-hook ()
-    "My backend aware export preprocess hook."
-    (save-excursion
-      (let* ((tag "ignoreheading"))
-        (org-map-entries (lambda ()
-                           (delete-region (point-at-bol) (point-at-eol)))
-                         (concat ":" tag ":")))
-      ))
-  
-  (add-hook 'org-export-preprocess-hook 'my/org-export-ignoreheadings-hook)
-  
-  (add-hook 'org-export-latex-after-initial-vars-hook 'my-auto-tex-packages)
-  
-  (unless (boundp 'org-export-latex-classes)
-    (setq org-export-latex-classes nil))
-  
-  (setq org-export-latex-classes
-                  `(("memoir-article"
-                          (,@ (concat  "\\documentclass[11pt,article,oneside,a4paper,x11names]{memoir}\n"
-                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                       "% -- PACKAGES \n[PACKAGES]\n"
-                                       my-org-minted-config
-                                       "% -- EXTRA \n[EXTRA]\n"
-                                       "\\counterwithout{section}{chapter}\n"
-                                       ))
-                          ("\\section{%s}" . "\\section*{%s}")
-                          ("\\subsection{%s}" . "\\subsection*{%s}")
-                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
-                    ("article"
-                          (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
-                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                       "% -- PACKAGES \n[PACKAGES]\n"
-                                       my-org-minted-config
-                                       "% -- EXTRA \n[EXTRA]\n"
-                                       ))
-                          ("\\section{%s}" . "\\section*{%s}")
-                          ("\\subsection{%s}" . "\\subsection*{%s}")
-                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
-                    )
-                  )
-  
-  (add-to-list 'org-export-latex-classes '("beamer"
-                                          "\\documentclass[11pt,bigger,a4paper,x11names]{beamer}\n"
-                                          org-beamer-sectioning
-                                          ) 'append)
-  
-  
-  
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((emacs-lisp . t) ;; this work
-     (R . t) ;; this works
-     (ruby . t) ;; works
-     (python . t) ;; yes, needs return statement 
-     (sh . t) ;; works
-     (perl . t) ;; works
-     (latex . t) ;; works
-     (clojure . t) ;; NOT YET
-     )
-   )
-  
+  (add-hook 'org-export-latex-after-initial-vars-hook 'set-org-latex-to-pdf-process)
+#+end_src
+
+*** Default packages 
+
+The Org source warns against changing the value of 
+~org-export-latex-default-packages-alist~, but it also includes
+~inputenc~ and ~fontenc~ for font and character selection, which are
+really for pdflatex, not xelatex and lualatex.
+
+#+name: auto-tex-packages 
+#+begin_src emacs-lisp
+  (setq org-export-latex-default-packages-alist
+        '(("" "fixltx2e" nil)
+          ("" "longtable" nil)
+          ("" "float" nil)
+          ("" "graphicx" t)
+          ("" "wrapfig" nil)
+          ("" "soul" t)
+          ("" "marvosym" t)
+          ("" "wasysym" t)
+          ("" "latexsym" t)
+          ("" "amssymb" t)
+          ("" "tabularx" nil)
+          ("" "booktabs" nil)
+          ("" "xcolor" nil)
+          "\\tolerance=1000"
+          )
+        )
+#+end_src
+
+*** My export packages
+
+I move the ~fontenc~/~fontspec~ package to engine-specific choices,
+and load ~hyperref~ after them, along with my ~minted~ code listing options.
+
+#+begin_src emacs-lisp
+      (defun my-auto-tex-packages ()
+        "Automatically set packages to include for different LaTeX engines"
+        (let ((my-org-export-latex-packages-alist 
+               `(("pdflatex" . (("AUTO" "inputenc" t)
+                                ("T1" "fontenc" t)
+                                ("" "textcomp" t)
+                                ("" "hyperref"  nil)
+                                ,my-org-minted-config))
+                 ("xelatex" . (("" "url" t)
+                               ("" "fontspec" t)
+                               ("" "xltxtra" t)
+                               ("" "xunicode" t)
+                               ("" "hyperref" nil)
+                               ,my-org-minted-config ))
+                 ("lualatex" . (("" "url" t)
+                             ("" "fontspec" t)
+                             ("" "hyperref" nil)
+                             ,my-org-minted-config ))
+                 ))
+              (which-tex (my-org-tex-cmd)))
+          (if (car (assoc which-tex my-org-export-latex-packages-alist))
+              (setq org-export-latex-packages-alist 
+                    (cdr (assoc which-tex my-org-export-latex-packages-alist)))
+            (warn "no packages")
+            )
+          )
+        )
+      (add-hook 'org-export-latex-after-initial-vars-hook 'my-auto-tex-packages)
+      
+      (unless (boundp 'org-export-latex-classes)
+        (setq org-export-latex-classes nil))
+
+#+end_src
+
+*** LaTeX export classes
+
+#+begin_src emacs-lisp
+      (setq org-export-latex-classes
+                      `(("memoir-article"
+                              (,@ (concat  "\\documentclass[11pt,article,oneside,a4paper,x11names]{memoir}\n"
+                                           "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                           "% -- PACKAGES \n[PACKAGES]\n"
+                                           "% -- EXTRA \n[EXTRA]\n"
+                                           "\\counterwithout{section}{chapter}\n"
+                                           ))
+                              ("\\section{%s}" . "\\section*{%s}")
+                              ("\\subsection{%s}" . "\\subsection*{%s}")
+                              ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                              ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                              ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                        ("article"
+                              (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
+                                           "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                           "% -- PACKAGES \n[PACKAGES]\n"
+                                           "% -- EXTRA \n[EXTRA]\n"
+                                           ))
+                              ("\\section{%s}" . "\\section*{%s}")
+                              ("\\subsection{%s}" . "\\subsection*{%s}")
+                              ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                              ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                              ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                        )
+                      )
+      
+      (add-to-list 'org-export-latex-classes '("beamer"
+                                              "\\documentclass[11pt,bigger,a4paper,x11names]{beamer}\n"
+                                              org-beamer-sectioning
+                                              ) 'append)
+      
+#+end_src
+
+** Org Babel
+
+I love using Org Babel.  So much fun.  Everything seems to work well
+except for Clojure.  Not sure why, but while Clojure works in
+leiningen projects, and "clj" works when running ~inferior-lisp~, Org
+Babel doesn't seem to connect to a SLIME process.
+
+#+begin_src emacs-lisp
+      (org-babel-do-load-languages
+       'org-babel-load-languages
+       '((emacs-lisp . t)
+         (R . t)
+         (ruby . t)
+         (python . t)  ;; requires return statement
+         (sh . t)
+         (perl . t)
+         (latex . t)
+         (clojure . t)  ;; oh, why doesn't this work?
+         )
+       )
+#+end_src
+
+
+** Org visuals
+#+begin_src emacs-lisp
   (setq org-attach-method 'ln)
   
   (setq org-use-property-inheritance '("PRIORITY" "STYLE"))
   (setq org-agenda-dim-blocked-tasks 't)
-  
-  ;; (defun ac-org-mode-setup () 
-  ;;   "set up auto-completion for AUCTeX LaTeX mode"
-  ;;   (interactive nil)
-  ;;   (add-to-list 'ac-sources 'ac-source-yasnippet) 
-  ;;   )
-  ;; (add-hook 'org-mode-hook  'ac-org-mode-setup)
-  
   
   (defun org-column-view-uses-fixed-width-face ()
     ;; copy from org-faces.el
@@ -562,90 +598,114 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
                           :family (face-attribute 'default :family)
                           )))
   
-  (require 'org-taskjuggler)
-  (setq org-export-taskjuggler-project-tag "taskjuggler_project")
-  (setq org-export-taskjuggler-default-reports '("include \"ganttexport.tji\""))
-   (when (and (fboundp 'daemonp) (daemonp))
+  (when (and (fboundp 'daemonp) (daemonp))
     (add-hook 'org-mode-hook 'org-column-view-uses-fixed-width-face))
   (add-hook 'org-mode-hook 'org-column-view-uses-fixed-width-face)
   
-  
-  ;; This (including the comment below) is from
-  ;; http://orgmode.org/worg/org-contrib/org-mac-iCal.html
-  
-  ;; A common problem with all-day and multi-day events in org agenda view is that
-  ;; they become separated from timed events and are placed below all TODO items.
-  ;; Likewise, additional fields such as Location: are orphaned from their parent
-  ;; events. The following hook will ensure that all events are correctly placed in
-  ;; the agenda. 
-  
-  (add-hook 'org-agenda-cleanup-fancy-diary-hook
-            (lambda ()
-              (goto-char (point-min))
-              (save-excursion
-                (while (re-search-forward "^[a-z]" nil t)
-                  (goto-char (match-beginning 0))
-                  (insert "0:00-24:00 ")))
-              (while (re-search-forward "^ [a-z]" nil t)
-                (goto-char (match-beginning 0))
-                (save-excursion
-                  (re-search-backward "^[0-9]+:[0-9]+-[0-9]+:[0-9]+ " nil t))
-                (insert (match-string 0)))))
-  
-  
-  ;;(require 'org-evernote)
+#+end_src
 
-  
-  ;;(org-babel-lob-ingest "~/Dropbox/emacs/github/org-mode/contrib/babel/library-of-babel.org")
-  
-  ;;; gtk-org-config.el ends here
-  
-  
-  ;;(require 'org-velocity)
-  ;;(setq org-velocity-bucket my/inbox)
-  ;;(global-set-key (kbd "C-c v") 'org-velocity)
-  
-  
-  (org-add-link-type 
-   "cite" nil
-   (lambda (path desc format)
-     (cond
-      ((eq format 'html)
-       (if (string-match "\(\\(.*\\)\)" desc)
-           (format "(<cite>%s</cite>)" (match-string 1 desc))      
-         (format "<cite>%s</cite>" desc)
-         )
-       )
-      ((eq format 'latex)
-       (format "\\cite{%s}" path)))))
-  
-  
-  (org-add-link-type 
-   "TERM" nil
-   (lambda (path desc format)
-     (cond
-      ((eq format 'html)
-       path
-       )
-      ((eq format 'latex)
-       (format "%s\\nomenclature{%s}{%s}" desc path desc)))))
-  
-  (org-add-link-type 
-   "Figure" nil
-   (lambda (path desc format)
-     (cond
-      ((eq format 'html)
-       path
-       )
-      ((eq format 'latex)
-       (format "Figure~\\ref{fig:%s}" path)))))
-  
-    
+** Task Juggler
+#+begin_src emacs-lisp
+
+      (setq org-export-taskjuggler-project-tag "taskjuggler_project")
+      (setq org-export-taskjuggler-default-reports '("include
+      \"ganttexport.tji\""))
+
+#+end_src
+
+
+** Link types
+
+I add a few link types to make things look more readable when doing
+editing of documents.
+
+#+begin_src emacs-lisp
+
+      (org-add-link-type 
+       "cite" nil
+       (lambda (path desc format)
+         (cond
+          ((eq format 'html)
+           (if (string-match "\(\\(.*\\)\)" desc)
+               (format "(<cite>%s</cite>)" (match-string 1 desc))      
+             (format "<cite>%s</cite>" desc)
+             )
+           )
+          ((eq format 'latex)
+           (format "\\cite{%s}" path)))))
+      
+      
+      (org-add-link-type 
+       "TERM" nil
+       (lambda (path desc format)
+         (cond
+          ((eq format 'html)
+           path
+           )
+          ((eq format 'latex)
+           (format "%s\\nomenclature{%s}{%s}" desc path desc)))))
+      
+      (org-add-link-type 
+       "Figure" nil
+       (lambda (path desc format)
+         (cond
+          ((eq format 'html)
+           path
+           )
+          ((eq format 'latex)
+           (format "Figure~\\ref{fig:%s}" path)))))
+      
+#+end_src       
+
+
+** Pre-processing hooks for export
+
+#+begin_src emacs-lisp
+      ;; backend aware export preprocess hook
+      (defun sa-org-export-preprocess-hook ()
+        "My backend aware export preprocess hook."
+        (save-excursion
+          (when (eq org-export-current-backend 'latex)
+            ;; ignoreheading tag for bibliographies and appendices
+            (let* ((tag "ignoreheading"))
+              (org-map-entries (lambda ()
+                                 (delete-region (point-at-bol) (point-at-eol)))
+                               (concat ":" tag ":"))))))
+      
+      (defun my/org-export-ignoreheadings-hook ()
+        "My backend aware export preprocess hook."
+        (save-excursion
+          (let* ((tag "ignoreheading"))
+            (org-map-entries (lambda ()
+                               (delete-region (point-at-bol) (point-at-eol)))
+                             (concat ":" tag ":")))
+          ))
+      
+      (add-hook 'org-export-preprocess-hook 'my/org-export-ignoreheadings-hook)
+      
+#+end_src
+
+
+
+
+
+** Publishing
+
+#+begin_src emacs-lisp
+  (let ((publishing-dir (expand-directory-name (concat dropbox-root "Public"))))
+    (setq org-publish-project-alist
+          `(("public"
+             :base-directory ,user-emacs-directory
+             :base-extension "org"
+             :publishing-directory ,publishing-dir
+             :publishing-function org-publish-org-to-html
+             )))
+    )
 #+end_src
 
 ** Org2blog
 
-Naturally, I first learneda about [[https://github.com/punchagan/org2blog][org2blog]] from Sacha Chua's
+Naturally, I first learned about [[https://github.com/punchagan/org2blog][org2blog]] from Sacha Chua's
 [[http://sachachua.com/blog/][blog]]. Sacha's notes on her own [[http://dl.dropbox.com/u/3968124/sacha-emacs.html][configuration]] seem to indicate she
 doesn't use it any more, but has switched to a different one in ELPA.
 I'm not sure what I'm missing here, since the org2blog in ELPA is
@@ -677,6 +737,9 @@ WordPress
        (setq org2blog/wp-sourcecode-default-params nil)
 #+end_src
 
+
+** Slides
+
 I've been playing with making Slidy slides from org.
 #+begin_src emacs-lisp
    (require 'org-htmlslidy)
@@ -687,7 +750,7 @@ I've been playing with making Slidy slides from org.
 
 
 
-**  Let's use Sacha Chua's css for HTML export, since it looks purty
+** Let's use Sacha Chua's css for HTML export, since it looks purty
 
 #+begin_src emacs-lisp
 
@@ -699,61 +762,74 @@ I've been playing with making Slidy slides from org.
 
 #+end_src
 
-* Mac specific stuff
 
-  #+begin_src emacs-lisp
-     (set-face-attribute 'default nil  :font "Monaco-Regular-16" ) 
-  #+END_SRC
-
-  #+RESULTS:
-
-
-
-* Things I'm not sure I need
-
-These are mostly things from my emacs 23 configuration, and I'm not
-sure I need them.  These should *not* be tangled
-
-#+begin_src emacs-lisp :eval no :tangle no
-(require 'mailcap)
-#+end_src
-
-
-* Get going
+                         * Mac specific stuff
 
 #+begin_src emacs-lisp
-  (load custom-file)
-  (load (expand-file-name (concat my-elisp-dir "emacs-secrets")))
-  (org-agenda nil "a")
+  (set-face-attribute 'default nil  :font "Monaco-Regular-16" )  
+  (set-face-attribute 'default nil  :font "Courier-Regular-16" )  
+#+END_SRC
+
+#+begin_src emacs-lisp
+  (require 'org-mac-link-grabber) 
+  (define-key org-mode-map (kbd "C-c g") 'omlg-grab-link)
 #+end_src
 
-  
+This (including the comment below) is from
+http://orgmode.org/worg/org-contrib/org-mac-iCal.html
+
+#+begin_quote
+A common problem with all-day and multi-day events in org agenda view
+is that they become separated from timed events and are placed below
+all TODO items.  Likewise, additional fields such as Location: are
+orphaned from their parent events. The following hook will ensure that
+all events are correctly placed in the agenda.
+#+end_quote
+
+#+begin_src emacs-lisp
+  (defun org-agenda-cleanup-diary-long-events ()
+    (goto-char (point-min))
+    (save-excursion
+      (while (re-search-forward "^[a-z]" nil t)
+        (goto-char (match-beginning 0))
+        (insert "0:00-24:00 ")))
+    (while (re-search-forward "^ [a-z]" nil t)
+      (goto-char (match-beginning 0))
+      (save-excursion
+        (re-search-backward "^[0-9]+:[0-9]+-[0-9]+:[0-9]+ " nil t))
+      (insert (match-string 0))))
+  (add-hook 'org-agenda-cleanup-fancy-diary-hook 'org-agenda-cleanup-diary-long-events)
+#+end_src       
+
+
+* Frame based behavior
+
+I'd like frame based things to work in emacs as well as they do in Aquamacs.
+
+#+name: gtk-frame-keys
+#+BEGIN_SRC emacs-lisp
+  (require 'frame-cmds)
+  (global-set-key "\M-=" 'tile-frames-horizontally)
+#+END_SRC
+
+
+
 * Try some stuff out
 
-** Use Sacha Chua's improvement to ido mode, since I (like her) usually want most recent files first
+** Clojure
 
 #+begin_src emacs-lisp
-(ido-mode 1)
-(setq ido-default-buffer-method 'selected-window)
-(add-hook 'ido-make-file-list-hook 'ido-sort-mtime)
-(add-hook 'ido-make-dir-list-hook 'ido-sort-mtime)
-(defun ido-sort-mtime ()
-  (setq ido-temp-list
-        (sort ido-temp-list 
-              (lambda (a b)
-                (let ((ta (nth 5 (file-attributes (concat ido-current-directory a))))
-                      (tb (nth 5 (file-attributes (concat ido-current-directory b)))))
-                  (if (= (nth 0 ta) (nth 0 tb))
-                      (> (nth 1 ta) (nth 1 tb))
-                    (> (nth 0 ta) (nth 0 tb)))))))
-  (ido-to-end  ;; move . files to end (again)
-   (delq nil (mapcar
-              (lambda (x) (if (string-equal (substring x 0 1) ".") x))
-              ido-temp-list))))
+(add-hook 'slime-connected-hook 
+	  (lambda () 
+	    (slime-repl-send-string "(use 'clojure.repl)")))
+(autoload 'clojure-test-mode "clojure-test-mode"
+      "Major mode for unit testing Clojure files" t)
+   (autoload 'clojure-test-maybe-enable "clojure-test-mode" "" t)
+   (add-hook 'clojure-mode-hook 'clojure-test-maybe-enable)
+   (require 'midje-mode)
+   (require 'clojure-jump-to-file)
+   (add-hook 'clojure-mode-hook 'midje-mode)
 #+end_src
-
-
-
 ** Electric return with paredit? 
 
    Not sure if I really want this
@@ -780,4 +856,23 @@ sure I need them.  These should *not* be tangled
   
 #+end_src
 
+
+
+   
+* Get going
+
+#+begin_src emacs-lisp
+  (load custom-file)
+  (load (expand-file-name (concat my-elisp-dir "emacs-secrets")))
+  (org-reload)
+  (server-start)
+  (menu-bar-mode 1)   
+  (find-file my/organizer)
+  (org-agenda nil "a")
+
+#+end_src
+
+#+LATEX: \vfill This was formatted in \theTeXEngine 
+ 
+ 
 
