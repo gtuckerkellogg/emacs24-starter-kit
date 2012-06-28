@@ -260,9 +260,9 @@ interested in the actual code implementing the starter kit.
 - ELPA archive repositories and two packages to install by default.
   #+begin_src emacs-lisp
     (setq package-archives
-          '(("original"    . "http://tromey.com/elpa/")
-            ("gnu"         . "http://elpa.gnu.org/packages/")
-            ("marmalade"   . "http://marmalade-repo.org/packages/")))
+          '(("marmalade"   . "http://marmalade-repo.org/packages/")
+            ("original"    . "http://tromey.com/elpa/")
+            ("gnu"         . "http://elpa.gnu.org/packages/")))
     (package-initialize)
     
     (defvar starter-kit-packages
@@ -274,6 +274,7 @@ interested in the actual code implementing the starter kit.
     (dolist (package starter-kit-packages)
       (unless (package-installed-p package)
         (package-install package)))
+    
   #+end_src
 
 - Functions for loading other parts of the starter kit

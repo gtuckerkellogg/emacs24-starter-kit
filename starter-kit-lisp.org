@@ -5,6 +5,7 @@
 
 This is part of the [[file:starter-kit.org][Emacs Starter Kit]].
 
+
 * Starter Kit Lisp
 Support for editing list dialects including [[* Emacs Lisp][Emacs Lisp]], [[* Scheme][Scheme]],
 [[* Common Lisp][Common Lisp]], and [[* Clojure][Clojure]].
@@ -62,6 +63,10 @@ back, =C-M-u= up, =C-M-d= down)
    :END:
 
 #+begin_src emacs-lisp
+(require 'elisp-slime-nav)
+(defun turn-on-elisp-slime-nav-mode ()
+   (elisp-slime-nav-mode t))
+ (add-hook 'emacs-lisp-mode-hook 'turn-on-elisp-slime-nav-mode)
 (add-hook 'emacs-lisp-mode-hook 'turn-on-eldoc-mode)
 (add-hook 'emacs-lisp-mode-hook 'run-starter-kit-coding-hook)
 (add-hook 'emacs-lisp-mode-hook 'starter-kit-remove-elc-on-save)

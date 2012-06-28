@@ -61,14 +61,6 @@ These are almost trivial functions, but I find them useful
     (cua-mode -1))
 #+END_SRC
 
-
-* LaTeX
-
-#+begin_src emacs-lisp :tangle no :eval no
-  (setq latex-run-command "lualatex") 
-  (setq latex-command "lualatex") 
-#+end_src
-
 * File configuration
 
 ** First we have some of my file organization
@@ -90,11 +82,13 @@ These are almost trivial functions, but I find them useful
 
 #+name: starter-kit
 #+begin_src emacs-lisp  
+  (require 'slime)
   (starter-kit-load "misc") 
   (starter-kit-load "misc-recommended") 
   (starter-kit-load "lisp")
   (starter-kit-load "bindings")
   (starter-kit-load "python" "python")
+  (starter-kit-load "ruby")
   (starter-kit-load "org")
   (starter-kit-load "eshell")
 #+end_src
@@ -124,6 +118,20 @@ I want to use clojure for my usual inferior lisp environment
               (error "You have to start a clojure repl first!")))))
   #+end_src
 
+
+* LaTeX
+
+#+begin_src emacs-lisp
+    (setq-default TeX-master t)
+    (add-hook 'LaTeX-mode-hook 'turn-on-paredit)
+  (defun turn-on-curly-paredit ()
+    (interactive)
+    (define-key LaTeX-mode-map (kbd "{") 'paredit-open-curly)
+    (define-key LaTeX-mode-map (kbd "}") 'paredit-close-curly))
+    (add-hook 'LaTeX-mode-hook 'turn-on-curly-paredit)
+  
+  #+end_src
+
 * Some modes
 
 ** handle text mode and markdown 
@@ -149,6 +157,13 @@ I want to use clojure for my usual inferior lisp environment
 
 #+RESULTS:
 
+* Spelling
+
+#+begin_src emacs-lisp
+(global-set-key (kbd "<f8>") 'ispell-word)
+(global-set-key (kbd "S-<f8>") 'flyspell-mode)
+(global-set-key (kbd "M-S-<f8>") 'flyspell-prog-mode)
+#+end_src
 * Key bindings
 
 I have some keys that I'd like to be always bound
@@ -205,6 +220,7 @@ Org miscellany
   (add-to-list 'org-modules 'org-mac-iCal) 
   (add-to-list 'org-modules 'org-habit)
   (add-to-list 'org-modules 'org-taskjuggler)  
+  (add-to-list 'org-modules 'org-special-blocks)  
   
 #+end_src
 
@@ -274,7 +290,7 @@ I use the diary to bring stuff in from the MacOS iCal
   (defun GTD ()
     "Go to my main GTD next action lists"
     (interactive)
-    (find-file my/gtd))
+    (find-file my/organizer))
   (setq org-todo-keywords
              '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!/!)")
                (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)")))
@@ -331,7 +347,7 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
 
 #+begin_src emacs-lisp
   (setq org-capture-templates
-        '(("t" "Todo items" entry (file+headline my/gtd "Unfiled Tasks")
+        '(("t" "Todo items" entry (file+headline my/organizer "Unfiled Tasks")
            "* TODO %?\n  %i\n  %a")
           ("i" "Into the inbox" entry (file+datetree my/inbox)
            "* %?\n\nEntered on %U\n  %i\n  %a" )
@@ -349,8 +365,8 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
   (setq org-refile-use-outline-path t
         org-refile-use-cache t)
        
-  (setq org-refile-targets '((my/gtd :maxlevel . 2 )
-                             (my/gtd :tag . "TAG" )
+  (setq org-refile-targets '((my/organizer :maxlevel . 2 )
+                             (my/organizer :tag . "TAG" )
                              ))
 #+end_src
   
@@ -555,6 +571,20 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
       
 #+end_src
 
+** RefTeX
+
+#+begin_src emacs-lisp :tangle no :eval no
+(add-hook 'LaTeX-mode-hook 'turn-on-reftex)
+(setq reftex-plug-into-AUCTeX t)
+(defun org-mode-reftex-setup ()
+  (load-library "reftex")
+  (and (buffer-file-name)
+       (file-exists-p (buffer-file-name))
+       (reftex-parse-all))
+  (define-key org-mode-map (kbd "C-c )") 'reftex-citation))
+(add-hook 'org-mode-hook 'org-mode-reftex-setup)
+#+end_src
+
 ** Org Babel
 
 I love using Org Babel.  So much fun.  Everything seems to work well
@@ -563,18 +593,19 @@ leiningen projects, and "clj" works when running ~inferior-lisp~, Org
 Babel doesn't seem to connect to a SLIME process.
 
 #+begin_src emacs-lisp
-      (org-babel-do-load-languages
-       'org-babel-load-languages
-       '((emacs-lisp . t)
-         (R . t)
-         (ruby . t)
-         (python . t)  ;; requires return statement
-         (sh . t)
-         (perl . t)
-         (latex . t)
-         (clojure . t)  ;; oh, why doesn't this work?
-         )
-       )
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((emacs-lisp . t)
+     (R . t)
+     (dot . t)
+     (ruby . t)
+     (python . t)  ;; requires return statement
+     (sh . t)
+     (perl . t)
+     (latex . t)
+     (clojure . t)  ;; oh, why doesn't this work?
+     )
+   )
 #+end_src
 
 
@@ -620,41 +651,51 @@ I add a few link types to make things look more readable when doing
 editing of documents.
 
 #+begin_src emacs-lisp
-
-      (org-add-link-type 
-       "cite" nil
-       (lambda (path desc format)
-         (cond
-          ((eq format 'html)
-           (if (string-match "\(\\(.*\\)\)" desc)
-               (format "(<cite>%s</cite>)" (match-string 1 desc))      
-             (format "<cite>%s</cite>" desc)
-             )
-           )
-          ((eq format 'latex)
-           (format "\\cite{%s}" path)))))
-      
-      
-      (org-add-link-type 
-       "TERM" nil
-       (lambda (path desc format)
-         (cond
-          ((eq format 'html)
-           path
-           )
-          ((eq format 'latex)
-           (format "%s\\nomenclature{%s}{%s}" desc path desc)))))
-      
-      (org-add-link-type 
-       "Figure" nil
-       (lambda (path desc format)
-         (cond
-          ((eq format 'html)
-           path
-           )
-          ((eq format 'latex)
-           (format "Figure~\\ref{fig:%s}" path)))))
-      
+  
+  (org-add-link-type 
+   "cite" nil
+   (lambda (path desc format)
+     (cond
+      ((eq format 'html)
+       (if (string-match "\(\\(.*\\)\)" desc)
+           (format "(<cite>%s</cite>)" (match-string 1 desc))      
+         (format "<cite>%s</cite>" desc)
+         )
+       )
+      ((eq format 'latex)
+       (format "\\cite{%s}" path)))))
+  
+  
+  (org-add-link-type 
+   "TERM" nil
+   (lambda (path desc format)
+     (cond
+      ((eq format 'html)
+       path
+       )
+      ((eq format 'latex)
+       (format "%s\\nomenclature{%s}{%s}" desc path desc)))))
+  
+  (org-add-link-type 
+   "Figure" nil
+   (lambda (path desc format)
+     (cond
+      ((eq format 'html)
+       path
+       )
+      ((eq format 'latex)
+       (format "Figure~\\ref{fig:%s}" path)))))
+  
+  (org-add-link-type 
+   "Table" nil
+   (lambda (path desc format)
+     (cond
+      ((eq format 'html)
+       path
+       )
+      ((eq format 'latex)
+       (format "Table~\\ref{tbl:%s}" path)))))
+  
 #+end_src       
 
 
@@ -752,22 +793,23 @@ I've been playing with making Slidy slides from org.
 
 ** Let's use Sacha Chua's css for HTML export, since it looks purty
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle no
 
 (setq org-export-html-style "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://sachachua.com/blog/wp-content/themes/sacha-v3/style.css\" />
 <link rel=\"stylesheet\" type=\"text/css\" href=\"http://sachachua.com/org-export.css\" />")
 (setq org-export-html-preamble "<div class=\"org-export\">")
 (setq org-export-html-postamble "</div>")
 (setq org-src-fontify-natively t)
-
+(setq org-export-html-style nil)
 #+end_src
 
 
-                         * Mac specific stuff
+
+
+* Mac specific stuff
 
 #+begin_src emacs-lisp
-  (set-face-attribute 'default nil  :font "Monaco-Regular-16" )  
-  (set-face-attribute 'default nil  :font "Courier-Regular-16" )  
+  (set-face-attribute 'default nil  :font "Monaco--Regular-14" )  
 #+END_SRC
 
 #+begin_src emacs-lisp
@@ -834,14 +876,14 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
 
    Not sure if I really want this
 
-#+begin_src emacs-lisp    
+#+begin_src emacs-lisp :tangle no
   (defvar electrify-return-match
         "[\]}\)\"]"
         "If this regexp matches the text after the cursor, do an \"electric\"
       return.")
     
-      (defun electrify-return-if-match (arg)
-        "If the text after the cursor matches `electrify-return-match' then
+  (defun electrify-return-if-match (arg)
+    "If the text after the cursor matches `electrify-return-match' then
       open and indent an empty line between the cursor and the text.  Move the
       cursor to the new line."
         (interactive "P")
@@ -858,7 +900,46 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
 
 
 
+** Mac specific stuff
+
+#+begin_src emacs-lisp
+  (if (eq system-type 'darwin)
+    (let* ((shell-path (shell-command-to-string "source $HOME/.bash_profile && echo $PATH"))
+           (path-list (split-string shell-path ":"))
+           )
+      (mapcar (lambda (directory)
+                (if (file-directory-p directory)
+                    (add-to-list 'exec-path directory)
+                  ))  (reverse path-list))
+      (setenv "PATH" shell-path)
+      (setenv "BIBINPUTS"    ".:/Users/gtuckerkellogg/Dropbox/_reference/bib//")
+      (setq reftex-bibpath-environment-variables
+            '( ".:/Users/gtuckerkellogg/Dropbox/_reference/bib//"))
+       
+      )
+    )
+#+end_src
    
+
+** Javascript
+
+#+begin_src emacs-lisp
+  (defun turn-on-slime-js-minor-mode ()
+    (slime-js-minor-mode 1))
+  (add-hook 'js2-mode-hook 'turn-on-slime-js-minor-mode)
+  (add-hook 'css-mode-hook
+            (lambda ()
+              (define-key css-mode-map "\M-\C-x" 'slime-js-refresh-css)
+              (define-key css-mode-map "\C-c\C-r" 'slime-js-embed-css)))
+#+end_src
+
+#+begin_src emacs-lisp
+  (autoload 'processing-mode "processing-mode" "Processing mode" t)
+  (add-to-list 'auto-mode-alist '("\\.pde$" . processing-mode))
+  (setq processing-location "~/bin/processing-read-only/processing/")
+#+end_src
+
+
 * Get going
 
 #+begin_src emacs-lisp
@@ -869,7 +950,6 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
   (menu-bar-mode 1)   
   (find-file my/organizer)
   (org-agenda nil "a")
-
 #+end_src
 
 #+LATEX: \vfill This was formatted in \theTeXEngine 
