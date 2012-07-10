@@ -1,0 +1,5 @@
+# -*- mode: snippet -*- 
+#name : SEQ TODO
+#contributor : Rick Moynihan <rick@sourcesmouth.co.uk>
+# --
+#+SEQ_TODO: ${1INBOX} | ${2:NEXT}

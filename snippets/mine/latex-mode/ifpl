@@ -1,0 +1,4 @@
+# name: ifpackageloaded
+# --
+\@ifpackageloaded{${1:package}}{}{\RequirePackage{$1}}
+$0
