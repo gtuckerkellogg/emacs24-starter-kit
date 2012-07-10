@@ -1,3 +1,4 @@
+
 #+TITLE:     Greg Tucker-Kellogg's Emacs configuration
 
 * Front matter                                                :ignoreheading:
@@ -89,9 +90,11 @@ These are almost trivial functions, but I find them useful
   (starter-kit-load "bindings")
   (starter-kit-load "python" "python")
   (starter-kit-load "ruby")
+  (starter-kit-load "perl")
   (starter-kit-load "org")
   (starter-kit-load "eshell")
 #+end_src
+
 
 I want to make sure the contrib directory is available, since I use an
 updated version of htmlize.el to fontify the exported code
@@ -122,8 +125,9 @@ I want to use clojure for my usual inferior lisp environment
 * LaTeX
 
 #+begin_src emacs-lisp
-    (setq-default TeX-master t)
-    (add-hook 'LaTeX-mode-hook 'turn-on-paredit)
+  (require 'tex)
+  (setq-default TeX-master t)
+  (add-hook 'LaTeX-mode-hook 'turn-on-paredit)
   (defun turn-on-curly-paredit ()
     (interactive)
     (define-key LaTeX-mode-map (kbd "{") 'paredit-open-curly)
@@ -156,6 +160,13 @@ I want to use clojure for my usual inferior lisp environment
 #+end_src
 
 #+RESULTS:
+
+** Require js2-mode
+
+#+begin_src emacs-lisp
+  (require 'js2-mode)
+  (require 'scss-mode-autoloads)
+#+end_src
 
 * Spelling
 
@@ -233,7 +244,7 @@ Chinese character 今 for today, and a ☺ for completed habits
          org-habit-show-habits-only-for-today t 
          org-habit-today-glyph 20170  
          org-hide-leading-stars nil
-         org-pretty-entities t)
+         org-pretty-entities nil)
 #+end_src
 
 ** Org file locations
@@ -244,10 +255,6 @@ Chinese character 今 for today, and a ☺ for completed habits
        (expand-file-name (concat dropbox-root "/_inbox/inbox.org"))
          "My inbox")
      (setq org-default-notes-file my/inbox)
-
-     (defvar my/gtd 
-        (expand-file-name (concat org-directory "/gtd.org")) 
-          "My main tasks list") 
 
      (defvar my/organizer
         (expand-file-name (concat org-directory "/organizer.org")) 
@@ -335,7 +342,6 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
   (global-set-key "\C-cl" 'org-store-link)
   (global-set-key "\C-ca" 'org-agenda)
   (global-set-key "\C-cj" 'org-clock-goto)
-  (global-set-key "\C-cb" 'org-iswitchb)
   (global-set-key "\C-cc" 'org-capture)
   (global-set-key "\C-ci" 'org-insert-link)
   (global-set-key "\C-c'" 'org-cycle-agenda-files)
@@ -417,6 +423,7 @@ the back end of org-mode HTML export.  As it is I have a default
 configuration string for minted that gets put in all my org LaTeX exports
    
 #+begin_src emacs-lisp
+  (require 'org-latex)
   (setq org-export-latex-listings 'minted)
   (setq org-export-latex-minted-options
         '(("linenos" "true") 
@@ -430,6 +437,13 @@ configuration string for minted that gets put in all my org LaTeX exports
                                      "\\definecolor{bg}{rgb}{0.97,0.97,0.97}\n" 
                                       "\\usemintedstyle{trac}\n"                                   
                                       ))
+  
+#+end_src
+
+I need R source code highlighting, but *minted* only knows "r"
+
+#+begin_src emacs-lisp
+  (add-to-list 'org-export-latex-minted-langs '(R "r"))
 #+end_src
 
 *** Different LaTeX engines
@@ -806,10 +820,21 @@ I've been playing with making Slidy slides from org.
 
 
 
+
+* R
+
+#+name: R and ess
+#+begin_src emacs-lisp
+  (require 'ess)
+  (require 'r-autoyas)
+  ;;(add-hook 'ess-mode-hook 'r-autoyas-ess-activate)
+#+end_src
+
+
 * Mac specific stuff
 
 #+begin_src emacs-lisp
-  (set-face-attribute 'default nil  :font "Monaco--Regular-14" )  
+  (set-face-attribute 'default nil  :font "Monaco--Regular-16" )
 #+END_SRC
 
 #+begin_src emacs-lisp
@@ -844,6 +869,14 @@ all events are correctly placed in the agenda.
 #+end_src       
 
 
+
+* Git
+
+#+begin_src emacs-lisp
+(require 'gist)
+
+#+end_src
+
 * Frame based behavior
 
 I'd like frame based things to work in emacs as well as they do in Aquamacs.
@@ -858,19 +891,20 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
 
 * Try some stuff out
 
+
 ** Clojure
 
 #+begin_src emacs-lisp
-(add-hook 'slime-connected-hook 
-	  (lambda () 
-	    (slime-repl-send-string "(use 'clojure.repl)")))
-(autoload 'clojure-test-mode "clojure-test-mode"
-      "Major mode for unit testing Clojure files" t)
-   (autoload 'clojure-test-maybe-enable "clojure-test-mode" "" t)
-   (add-hook 'clojure-mode-hook 'clojure-test-maybe-enable)
-   (require 'midje-mode)
-   (require 'clojure-jump-to-file)
-   (add-hook 'clojure-mode-hook 'midje-mode)
+; (add-hook 'slime-connected-hook 
+;             (lambda () 
+;               (slime-repl-send-string "(use 'clojure.repl)")))
+  (autoload 'clojure-test-mode "clojure-test-mode"
+        "Major mode for unit testing Clojure files" t)
+     (autoload 'clojure-test-maybe-enable "clojure-test-mode" "" t)
+     (add-hook 'clojure-mode-hook 'clojure-test-maybe-enable)
+     (require 'midje-mode)
+     (require 'clojure-jump-to-file)
+     (add-hook 'clojure-mode-hook 'midje-mode)
 #+end_src
 ** Electric return with paredit? 
 
@@ -918,6 +952,8 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
        
       )
     )
+  (setq browse-url-browser-function 'browse-url-generic)
+  (setq browse-url-generic-program "open")
 #+end_src
    
 
@@ -926,12 +962,20 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
 #+begin_src emacs-lisp
   (defun turn-on-slime-js-minor-mode ()
     (slime-js-minor-mode 1))
+  (eval-after-load 'slime
+    '(setq slime-protocol-version 'ignore))
   (add-hook 'js2-mode-hook 'turn-on-slime-js-minor-mode)
   (add-hook 'css-mode-hook
             (lambda ()
               (define-key css-mode-map "\M-\C-x" 'slime-js-refresh-css)
-              (define-key css-mode-map "\C-c\C-r" 'slime-js-embed-css)))
-#+end_src
+              (define-key css-mode-map "\C-c\C-r" 'slime-js-embed-css)
+              (define-key css-mode-map [f5] 'slime-js-refresh-css)))
+  
+  (add-hook 'after-init-hook
+            #'(lambda ()
+                (when (locate-library "slime-js")
+                  (require 'setup-slime-js))))'
+  #+end_src
 
 #+begin_src emacs-lisp
   (autoload 'processing-mode "processing-mode" "Processing mode" t)
@@ -940,6 +984,31 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
 #+end_src
 
 
+** expand region
+
+#+begin_src emacs-lisp
+(require 'expand-region)
+(global-set-key (kbd "C-c =") 'er/expand-region)
+#+end_src
+
+#+begin_src emacs-lisp
+  (require 'inline-string-rectangle)
+  (global-set-key (kbd "C-x r t") 'inline-string-rectangle)
+  
+  (require 'mark-more-like-this)
+  (global-set-key (kbd "C-<") 'mark-previous-like-this)
+  (global-set-key (kbd "C->") 'mark-next-like-this)
+  (global-set-key (kbd "C-M-m") 'mark-more-like-this) ; like the other two, but takes an argument (negative is previous)
+  (global-set-key (kbd "C-*") 'mark-all-like-this)
+  
+  ;;(require 'rename-sgml-tag)
+  ;;(define-key sgml-mode-map (kbd "C-c C-r") 'rename-sgml-tag)
+  
+  ;(require 'js2-rename-var)
+  ;(define-key js2-mode-map (kbd "C-c C-r") 'js2-rename-var)
+  
+  
+#+end_src
 * Get going
 
 #+begin_src emacs-lisp

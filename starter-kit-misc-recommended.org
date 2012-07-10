@@ -12,7 +12,7 @@ enough to live in =starter-kit-misc.org=.
 Determine whether required packages are installed. If not, use ELPA to
 install them. Other dependencies are provided by Emacs 24.
 #+begin_src emacs-lisp
-  (dolist (package '(yaml-mode js2-mode))
+  (dolist (package '(yaml-mode))
     (unless (package-installed-p package)
       (package-install package)))
 #+end_src

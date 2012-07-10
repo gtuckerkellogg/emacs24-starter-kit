@@ -1,5 +1,5 @@
 # Name of your emacs binary
-EMACS=emacs
+EMACS=/Applications/Emacs.app/Contents/MacOS/Emacs
 
 BATCH=$(EMACS) --batch -Q --eval '(setq starter-kit-dir default-directory)'
 
