@@ -1,0 +1,9 @@
+[submodule "snippets/gtk-yas"]
+	path = snippets/gtk-yas
+	url = https://github.com/gtuckerkellogg/yasnips.git
+[submodule "src/expand-region"]
+	path = site-lisp/expand-region
+	url = https://github.com/magnars/expand-region.el.git
+[submodule "src/mark-multiple"]
+	path = src/mark-multiple
+	url = https://github.com/magnars/mark-multiple.el.git
