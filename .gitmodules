@@ -7,3 +7,6 @@
 [submodule "src/mark-multiple"]
 	path = src/mark-multiple
 	url = https://github.com/magnars/mark-multiple.el.git
+[submodule "snippets/gits/latex-mode"]
+	path = snippets/gits/latex-mode
+	url = https://github.com/madsdk/yasnippets-latex.git
