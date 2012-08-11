@@ -7,6 +7,3 @@
 [submodule "src/mark-multiple"]
 	path = src/mark-multiple
 	url = https://github.com/magnars/mark-multiple.el.git
-[submodule "sunrise-commander"]
-	path = sunrise-commander
-	url = git://github.com/escherdragon/sunrise-commander.git
