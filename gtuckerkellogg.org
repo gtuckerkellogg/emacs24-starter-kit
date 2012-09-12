@@ -2,7 +2,6 @@
 
 * Front matter                                                :ignoreheading:
 #+AUTHOR:    Greg Tucker-Kellogg
-#+EMAIL:     gtuckerkellogg@gmail.com
 #+DATE:      2012-06-13 Wed
 #+DESCRIPTION:
 #+KEYWORDS:
@@ -956,9 +955,6 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
 #+BEGIN_SRC emacs-lisp
   (require 'frame-cmds)
   (global-set-key "\M-=" 'tile-frames-horizontally)
-  (global-set-key "\M-+"  'enlarge-font)
-  (defun shrink-font () (interactive) (enlarge-font -1))
-  (global-set-key "\M--" 'shrink-font)
 #+END_SRC
 
 
