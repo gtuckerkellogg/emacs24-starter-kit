@@ -10,3 +10,9 @@
 [submodule "snippets/gits/latex-mode"]
 	path = snippets/gits/latex-mode
 	url = https://github.com/madsdk/yasnippets-latex.git
+[submodule "src/emacs-chrome"]
+	path = src/emacs-chrome
+	url = https://github.com/stsquad/emacs_chrome.git
+[submodule "src/nrepl.el"]
+	path = src/nrepl.el
+	url = https://github.com/kingtim/nrepl.el.git

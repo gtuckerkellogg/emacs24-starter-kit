@@ -11,6 +11,7 @@ places
 tramp
 
 ## directories
+ac-dict/*
 backups/*
 thumbs/*
 oddmuse/*
@@ -55,3 +56,4 @@ agent/*
 /snippets/davidmiller/
 
 snippets/yas/
+/ac-comphist.dat

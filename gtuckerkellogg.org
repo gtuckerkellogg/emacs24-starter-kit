@@ -1,4 +1,3 @@
-
 #+TITLE:     Greg Tucker-Kellogg's Emacs configuration
 
 * Front matter                                                :ignoreheading:
@@ -92,6 +91,7 @@ These are almost trivial functions, but I find them useful
   (starter-kit-load "ruby")
   (starter-kit-load "perl")
   (starter-kit-load "org")
+  (require 'org-compat)
   (starter-kit-load "eshell")
 #+end_src
 
@@ -102,12 +102,17 @@ updated version of htmlize.el to fontify the exported code
 #+name contribs
 #+begin_src emacs-lisp
   (add-to-list 'load-path (gtk/emacs-subdir "org-mode/contrib/lisp"))  
+;;  (add-to-list 'load-path (gtk/emacs-subdir "org-mode/lisp"))  
+  (setq custom-theme-directory  (gtk/emacs-subdir "themes"))
 #+end_src
 
 I want to use clojure for my usual inferior lisp environment
 
 #+begin_src emacs-lisp
-  (setq inferior-lisp-program "lein repl")   
+;;  (setq inferior-lisp-program "lein repl")   
+  (setq inferior-lisp-program "clj")   
+(require 'nrepl)
+(define-key nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-eval-expression-at-point)
 #+end_src
 
 #+begin_src emacs-lisp :tangle no
@@ -128,11 +133,12 @@ I want to use clojure for my usual inferior lisp environment
   (require 'tex)
   (setq-default TeX-master t)
   (add-hook 'LaTeX-mode-hook 'turn-on-paredit)
+  (setq TeX-PDF-mode t)
   (defun turn-on-curly-paredit ()
     (interactive)
     (define-key LaTeX-mode-map (kbd "{") 'paredit-open-curly)
     (define-key LaTeX-mode-map (kbd "}") 'paredit-close-curly))
-    (add-hook 'LaTeX-mode-hook 'turn-on-curly-paredit)
+  (add-hook 'LaTeX-mode-hook 'turn-on-curly-paredit)
   
   #+end_src
 
@@ -222,17 +228,35 @@ Org miscellany
 #+end_src
 
 
-
-** Modules
+*** Getting smart quotes
 
 #+begin_src emacs-lisp
-  (require 'org)
-  (add-to-list 'org-modules 'org-latex)
-  (add-to-list 'org-modules 'org-mac-iCal) 
-  (add-to-list 'org-modules 'org-habit)
-  (add-to-list 'org-modules 'org-taskjuggler)  
-  (add-to-list 'org-modules 'org-special-blocks)  
-  
+(defun gtk-org-init ()
+      (require 'typopunct)
+      (typopunct-change-language 'english)
+      (typopunct-mode -1))
+(add-hook 'org-mode-hook 'gtk-org-init)
+#+end_src
+
+
+
+** Emphasis
+
+#+begin_src emacs-lisp :tangle no
+  (add-to-list 'org-emphasis-alist '("@" org-warning "<b>" "</b>"))
+  (add-to-list 'org-export-latex-emphasis-alist '("@" "\\alert{%s}" nil))
+#+end_src
+** 
+Modules
+
+#+begin_src emacs-lisp
+(require 'org)
+(setq org-modules '(org-bbdb org-bibtex org-info org-jsinfo org-w3m))
+(add-to-list 'org-modules 'org-latex)
+(add-to-list 'org-modules 'org-mac-iCal) 
+(add-to-list 'org-modules 'org-habit)
+(add-to-list 'org-modules 'org-taskjuggler)  
+(add-to-list 'org-modules 'org-special-blocks)  
 #+end_src
 
 I want the habits display to be a little to the right. I'll use the
@@ -302,14 +326,14 @@ I use the diary to bring stuff in from the MacOS iCal
              '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!/!)")
                (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)")))
        
-  (setq org-todo-keyword-faces
-        (quote (("TODO" :foreground "red" :weight bold)
-                ("NEXT" :foreground "blue" :weight bold)
-                ("DONE" :foreground "forest green" :weight bold)
-                ("WAITING" :foreground "orange" :weight bold)
-                ("HOLD" :foreground "magenta" :weight bold)
-                ("CANCELLED" :foreground "forest green" :weight bold)
-                )))
+  ;; (setq org-todo-keyword-faces
+  ;;       (quote (("TODO" :foreground "red" :weight bold)
+  ;;               ("NEXT" :foreground "blue" :weight bold)
+  ;;               ("DONE" :foreground "forest green" :weight bold)
+  ;;               ("WAITING" :foreground "orange" :weight bold)
+  ;;               ("HOLD" :foreground "magenta" :weight bold)
+  ;;               ("CANCELLED" :foreground "forest green" :weight bold)
+  ;;               )))
        
   (setq org-todo-state-tags-triggers
         (quote (("CANCELLED" ("CANCELLED" . t))
@@ -320,6 +344,7 @@ I use the diary to bring stuff in from the MacOS iCal
                 ("NEXT" ("WAITING") ("CANCELLED") ("HOLD"))
                 ("DONE" ("WAITING") ("CANCELLED") ("HOLD")))))
        
+  
 #+end_src
 
 *** Categories as Areas of focus
@@ -382,28 +407,38 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
 This is yasnippet behavior, cribbed from emacswiki.  
 
 #+begin_src emacs-lisp
+    
+    (defun yas/org-very-safe-expand ()
+      (let ((yas/fallback-behavior 'return-nil)) (yas/expand)))
+    
+    (defun yas/org-safe-hook ()
+      (require 'yasnippet)
+      (make-variable-buffer-local 'yas/trigger-key)
+      (setq yas/trigger-key [tab])
+      (add-to-list 'org-tab-first-hook 'yas/org-very-safe-expand)
+      (define-key yas/keymap [tab] 'yas/next-field)
+      )
+         
+    (add-hook 'org-mode-hook 'yas/org-safe-hook)
   
-  (defun yas/org-very-safe-expand ()
-    (let ((yas/fallback-behavior 'return-nil)) (yas/expand)))
+  (add-hook 'org-mode-hook
+            (let ((original-command (lookup-key org-mode-map [tab])))
+              `(lambda ()
+                 (setq yas/fallback-behavior
+                       '(apply ,original-command))
+                 (local-set-key [tab] 'yas/expand))))
   
-  (defun yas/org-safe-hook ()
-    (require 'yasnippet)
-    (make-variable-buffer-local 'yas/trigger-key)
-    (setq yas/trigger-key [tab])
-    (add-to-list 'org-tab-first-hook 'yas/org-very-safe-expand)
-    (define-key yas/keymap [tab] 'yas/next-field)
-    )
-       
-  (add-hook 'org-mode-hook 'yas/org-safe-hook)
+
+  
 #+end_src
 
 
 ** Time logging
 
 #+begin_src emacs-lisp
-  (setq org-clock-persist 'history)
-  (org-clock-persistence-insinuate)   
-  (setq org-log-into-drawer t) 
+;;  (setq org-clock-persist 'history)
+;;  (org-clock-persistence-insinuate)   
+;;  (setq org-log-into-drawer t) 
 #+end_src
 
 
@@ -423,7 +458,6 @@ the back end of org-mode HTML export.  As it is I have a default
 configuration string for minted that gets put in all my org LaTeX exports
    
 #+begin_src emacs-lisp
-  (require 'org-latex)
   (setq org-export-latex-listings 'minted)
   (setq org-export-latex-minted-options
         '(("linenos" "true") 
@@ -551,41 +585,78 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
 *** LaTeX export classes
 
 #+begin_src emacs-lisp
-      (setq org-export-latex-classes
-                      `(("memoir-article"
-                              (,@ (concat  "\\documentclass[11pt,article,oneside,a4paper,x11names]{memoir}\n"
-                                           "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                           "% -- PACKAGES \n[PACKAGES]\n"
-                                           "% -- EXTRA \n[EXTRA]\n"
-                                           "\\counterwithout{section}{chapter}\n"
-                                           ))
-                              ("\\section{%s}" . "\\section*{%s}")
-                              ("\\subsection{%s}" . "\\subsection*{%s}")
-                              ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                              ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                              ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
-                        ("article"
-                              (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
-                                           "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                           "% -- PACKAGES \n[PACKAGES]\n"
-                                           "% -- EXTRA \n[EXTRA]\n"
-                                           ))
-                              ("\\section{%s}" . "\\section*{%s}")
-                              ("\\subsection{%s}" . "\\subsection*{%s}")
-                              ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                              ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                              ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
-                        )
-                      )
-      
-      (add-to-list 'org-export-latex-classes '("beamer"
-                                              "\\documentclass[11pt,bigger,a4paper,x11names]{beamer}\n"
-                                              org-beamer-sectioning
-                                              ) 'append)
-      
+  (setq org-export-latex-classes
+                  `(("memoir-article"
+                          (,@ (concat  "\\documentclass[11pt,article,oneside,a4paper,x11names]{memoir}\n"
+                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                       "% -- PACKAGES \n[PACKAGES]\n"
+                                       "% -- EXTRA \n[EXTRA]\n"
+                                       "\\counterwithout{section}{chapter}\n"
+                                       ))
+                          ("\\section{%s}" . "\\section*{%s}")
+                          ("\\subsection{%s}" . "\\subsection*{%s}")
+                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                    ("article"
+                          (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
+                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                       "% -- PACKAGES \n[PACKAGES]\n"
+                                       "% -- EXTRA \n[EXTRA]\n"
+                                       ))
+                          ("\\section{%s}" . "\\section*{%s}")
+                          ("\\subsection{%s}" . "\\subsection*{%s}")
+                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                    ("handout"
+                          (,@ (concat  "\\documentclass[oneside,a4paper,]{tufte-handout}\n"
+                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                       "% -- PACKAGES \n[PACKAGES]\n"
+                                       "% -- EXTRA \n[EXTRA]\n"
+                                       ))
+                          ("\\section{%s}" . "\\section*{%s}")
+                          ("\\subsection{%s}" . "\\subsection*{%s}")
+                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                    )
+                  )
+  
+  (add-to-list 'org-export-latex-classes '("beamer"
+                                          "\\documentclass[11pt,bigger,a4paper,x11names]{beamer}\n"
+                                          org-beamer-sectioning
+                                          ) 'append)
+  
+  
+  (add-to-list 'org-export-latex-classes '("tufte-handout"
+                                          "\\documentclass[11pt,a4paper,x11names]{tufte-handout}\n"
+                                          ("\\section{%s}" . "\\section*{%s}")
+                                          ("\\subsection{%s}" . "\\subsection*{%s}")
+                                          ) 'append)
+  
 #+end_src
 
-** RefTeX
+*** Removing captions in Beamer
+
+Org mode latex export uses \\caption  for all Figures and tables.  In
+Beamer, I don't want these numbered, so want to use the caption
+package and convert everything to \\caption.  This does it, if I bind
+it to ~org-export-latex-final-hook~
+
+#+BEGIN_SRC emacs-lisp
+  (defun latex-buffer-caption-to-caption* ()
+    (when org-beamer-export-is-beamer-p
+      (replace-regexp "\\(\\\\caption\\)\\([[{]\\)" "\\1*\\2" nil
+    (point-min)   (point-max)))
+  )
+  (add-hook 'org-export-latex-final-hook
+            'latex-buffer-caption-to-caption* 'append)
+
+  #+END_SRC
+
+
+* RefTeX
 
 #+begin_src emacs-lisp :tangle no :eval no
 (add-hook 'LaTeX-mode-hook 'turn-on-reftex)
@@ -834,11 +905,11 @@ I've been playing with making Slidy slides from org.
 * Mac specific stuff
 
 #+begin_src emacs-lisp
-  (set-face-attribute 'default nil  :font "Monaco--Regular-16" )
+  (set-face-attribute 'default nil  :font "Monaco--Regular-14" )
 #+END_SRC
 
 #+begin_src emacs-lisp
-  (require 'org-mac-link-grabber) 
+  (require 'org-mac-link-grabber)
   (define-key org-mode-map (kbd "C-c g") 'omlg-grab-link)
 #+end_src
 
@@ -885,6 +956,9 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
 #+BEGIN_SRC emacs-lisp
   (require 'frame-cmds)
   (global-set-key "\M-=" 'tile-frames-horizontally)
+  (global-set-key "\M-+"  'enlarge-font)
+  (defun shrink-font () (interactive) (enlarge-font -1))
+  (global-set-key "\M--" 'shrink-font)
 #+END_SRC
 
 
@@ -905,6 +979,7 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
      (require 'midje-mode)
      (require 'clojure-jump-to-file)
      (add-hook 'clojure-mode-hook 'midje-mode)
+
 #+end_src
 ** Electric return with paredit? 
 
@@ -983,7 +1058,6 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
   (setq processing-location "~/bin/processing-read-only/processing/")
 #+end_src
 
-
 ** expand region
 
 #+begin_src emacs-lisp
@@ -1009,6 +1083,62 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
   
   
 #+end_src
+
+** Auto complete
+
+#+begin_src emacs-lisp
+    (require 'auto-complete)
+    (require 'auto-complete-config)
+    (defun turn-off-auto-complete-mode ()
+      (interactive)
+      (auto-complete-mode 0))
+  
+    (ac-config-default)
+    ;; (define-key ac-complete-mode-map "\t" 'ac-expand)
+    (define-key ac-complete-mode-map [tab] 'ac-expand)     ; <<--- add this line
+    ;; (define-key ac-complete-mode-map "\r" 'ac-complete)
+    
+    (setq-default ac-sources '(ac-source-yasnippet
+                               ac-source-abbrev
+                               ac-source-dictionary
+                               ac-source-words-in-same-mode-buffers
+                               ))
+    
+    (add-to-list 'ac-dictionary-directories (concat user-emacs-directory "ac-dict"))
+    ;;(setq ac-use-comphist t)
+    (ac-flyspell-workaround)
+    (setq fill-column 80)
+    (define-globalized-minor-mode real-global-auto-complete-mode
+      auto-complete-mode (lambda ()
+                           (if (not (minibufferp (current-buffer)))
+                               (auto-complete-mode 1)
+                              (run-hooks 'auto-complete-mode-hook)
+                              )
+                            ))
+    ;;(real-global-auto-complete-mode t) 
+    
+    (defun ac-LaTeX-mode-setup () 
+      "set up auto-completion for AUCTeX LaTeX mode"
+      (interactive nil)
+      (add-to-list 'ac-sources 'ac-source-latex-commands)
+      (add-to-list 'ac-sources 'ac-source-yasnippet) 
+      )
+    (add-hook 'LaTeX-mode-hook  'ac-LaTeX-mode-setup)
+    
+#+end_src
+
+
+** Less CSS
+
+#+begin_src emacs-lisp
+  (add-to-list 'auto-mode-alist '("\\.less$" . less-css-mode))
+  (autoload 'less-css-mode "less-css-mode" "Less CSS mode" t)
+  (defun gtk-less-css-mode-init ()
+    (setq less-css-compile-at-save t)
+    (setq less-css-lessc-options nil))
+  (add-hook 'less-css-mode-hook 'gtk-less-css-mode-init)
+  
+#+end_src
 * Get going
 
 #+begin_src emacs-lisp
@@ -1024,4 +1154,6 @@ I'd like frame based things to work in emacs as well as they do in Aquamacs.
 #+LATEX: \vfill This was formatted in \theTeXEngine 
  
  
+
+
 
