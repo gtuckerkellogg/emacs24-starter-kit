@@ -131,7 +131,7 @@ I want to use clojure for my usual inferior lisp environment
 
 
 #+begin_src emacs-lisp
-(require 'ob)
+;;(require 'ob)
 
 (add-to-list 'org-babel-tangle-lang-exts '("clojure" . "clj"))
 
@@ -1096,3 +1096,4 @@ all events are correctly placed in the agenda.
 
 
 * Magit
+
