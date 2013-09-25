@@ -19,3 +19,6 @@
 [submodule "submodules/ess"]
 	path = submodules/ess
 	url = https://github.com/emacs-ess/ESS.git
+[submodule "org"]
+	path = org
+	url = git://orgmode.org/org-mode.git
