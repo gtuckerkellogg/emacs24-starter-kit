@@ -16,8 +16,8 @@
 [submodule "src/nrepl.el"]
 	path = src/nrepl.el
 	url = https://github.com/kingtim/nrepl.el.git
-[submodule "submodules/ess"]
-	path = submodules/ess
+[submodule "src/ess"]
+	path = src/ess
 	url = https://github.com/emacs-ess/ESS.git
 [submodule "org"]
 	path = org
