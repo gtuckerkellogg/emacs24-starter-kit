@@ -51,10 +51,3 @@ secret.org
 .emacs.desktop*
 .*~
 agent/*
-/gtuckerkellogg.fdb_latexmk
-/org-mode/
-/snippets/davidmiller/
-
-snippets/yas/
-/ac-comphist.dat
-/snippets/others/*
