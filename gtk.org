@@ -72,7 +72,7 @@ These are almost trivial functions, but I find them useful
 #+begin_src emacs-lisp
   (defvar dropbox-root  
    (convert-standard-filename "~/Dropbox/")
-    "This is where DropBox should be mounted on all of my systems")
+    "This is where Dropbox should be mounted on all of my systems")
     
   (setq user-emacs-directory (convert-standard-filename "~/.emacs.d/"))
     
@@ -93,7 +93,7 @@ These are almost trivial functions, but I find them useful
     (starter-kit-load "misc-recommended") 
     (starter-kit-load "lisp")
     (starter-kit-load "bindings")
-    (starter-kit-load "python" )
+;;   (starter-kit-load "python" )
     (starter-kit-load "ruby")
     (starter-kit-load "perl")
     (starter-kit-load "org")
@@ -463,8 +463,8 @@ This is yasnippet behavior, cribbed from emacswiki.
       (let ((yas/fallback-behavior 'return-nil)) (yas/expand)))
     
     (defun yas/org-safe-hook ()
-      (load-library "yasnippet")
-      (yas/initialize)
+      (require 'yasnippet)
+;;   (yas/initialize)
       (make-variable-buffer-local 'yas/trigger-key)
       (setq yas/trigger-key [tab])
       (add-to-list 'org-tab-first-hook 'yas/org-very-safe-expand)
@@ -779,20 +779,20 @@ leiningen projects, and "clj" works when running ~inferior-lisp~, Org
 Babel doesn't seem to connect to a SLIME process.
 
 #+begin_src emacs-lisp
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((emacs-lisp . t)
-     (R . t)
-     (dot . t)
-     (ruby . t)
-     (python . t)  ;; requires return statement
-     (sh . t)
-     (perl . t)
-     (latex . t)
-     (clojure . t)  ;; oh, why doesn't this work?
+    (org-babel-do-load-languages
+     'org-babel-load-languages
+     '((emacs-lisp . t)
+       (R . t)
+       (dot . t)
+       (ruby . t)
+       (python . t)  ;; requires return statement
+       (sh . t)
+       (perl . t)
+       (latex . t)
+       (clojure . t)  ;; oh, why doesn't this work?
+       )
      )
-   )
-(require 'ess-site)
+  (require 'ess-site)
 #+end_src
 
 
@@ -1096,4 +1096,15 @@ all events are correctly placed in the agenda.
 
 
 * Magit
+
+* emacs-for-python
+
+I had to remove cython and yasnippet extensions to not screw up
+org-mode.
+
+#+BEGIN_SRC emacs-lisp :eval no
+;; (load-file "~/.emacs.d/src/emacs-for-python/epy-init.el")
+;; (epy-setup-checker "pyflakes %f")
+(global-hl-line-mode t)
+#+END_SRC
 

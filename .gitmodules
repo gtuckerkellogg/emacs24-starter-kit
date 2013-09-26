@@ -22,3 +22,7 @@
 [submodule "org"]
 	path = org
 	url = git://orgmode.org/org-mode.git
+[submodule "src/emacs-for-python"]
+	path = src/emacs-for-python
+	url = "https://github.com/eugeneai/emacs-for-python.git"
+
