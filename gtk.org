@@ -98,6 +98,7 @@ These are almost trivial functions, but I find them useful
     (starter-kit-load "perl")
     (starter-kit-load "org")
     (starter-kit-load "eshell")
+(setq debug-on-error t)
 #+end_src
 
 
@@ -1095,16 +1096,14 @@ all events are correctly placed in the agenda.
 #+END_SRC
 
 
-* Magit
-
 * emacs-for-python
 
 I had to remove cython and yasnippet extensions to not screw up
 org-mode.
 
 #+BEGIN_SRC emacs-lisp :eval no
-;; (load-file "~/.emacs.d/src/emacs-for-python/epy-init.el")
-;; (epy-setup-checker "pyflakes %f")
+(elpy-enable)
+(require 'python-mode)
 (global-hl-line-mode t)
 #+END_SRC
 
