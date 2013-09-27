@@ -86,19 +86,18 @@ These are almost trivial functions, but I find them useful
 
 #+name: starter-kit
 #+begin_src emacs-lisp  
-  ;;  (require 'slime)
-  ;;  (require 'slime-clj)
-  ;;  (require 'slime-js)
-    (starter-kit-load "misc") 
-    (starter-kit-load "misc-recommended") 
-    (starter-kit-load "lisp")
-    (starter-kit-load "bindings")
-;;   (starter-kit-load "python" )
-    (starter-kit-load "ruby")
-    (starter-kit-load "perl")
-    (starter-kit-load "org")
-    (starter-kit-load "eshell")
-(setq debug-on-error t)
+    ;;  (require 'slime)
+    ;;  (require 'slime-clj)
+    ;;  (require 'slime-js)
+  (starter-kit-load "misc") 
+  (starter-kit-load "misc-recommended") 
+  (starter-kit-load "lisp")
+  (starter-kit-load "bindings")
+  (starter-kit-load "ruby")
+  (starter-kit-load "perl")
+  (starter-kit-load "org")
+  (starter-kit-load "eshell")
+  (setq debug-on-error t)
 #+end_src
 
 
@@ -1028,7 +1027,16 @@ I've been playing with making Slidy slides from org.
 * Mac specific stuff
 
 #+begin_src emacs-lisp
-  ;; (set-face-attribute 'default nil  :font "Monaco--Regular-14" )
+  (set-face-attribute 'default nil  :family "Anonymous Pro" :height 200 )
+  
+  ;; (set-face-attribute 'font-lock-comment-face nil 
+  ;;                     :family "Optima"
+  ;;                     :height 200
+  ;;                     :slant 'italic
+  ;;                     :background "#eeeeee"
+  ;;                     :foreground "#000000"
+  ;;                     )
+  
 #+END_SRC
 
 #+begin_src emacs-lisp
@@ -1096,14 +1104,28 @@ all events are correctly placed in the agenda.
 #+END_SRC
 
 
-* emacs-for-python
+* elpy
 
 I had to remove cython and yasnippet extensions to not screw up
 org-mode.
 
-#+BEGIN_SRC emacs-lisp :eval no
-(elpy-enable)
-(require 'python-mode)
-(global-hl-line-mode t)
+#+BEGIN_SRC emacs-lisp
+  (elpy-enable)
+  (require 'python-mode)
+  (global-hl-line-mode t)
+  (require 'expand-region)
+  (global-set-key (kbd "C-=") 'er/expand-region)
 #+END_SRC
 
+
+
+* SWANK-JS 
+
+Run this by running swank-js from a command line
+then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
+
+#+BEGIN_SRC emacs-lisp
+(require 'slime)
+(slime-setup '(slime-js slime-repl))
+(require 'setup-slime-js)
+#+END_SRC
