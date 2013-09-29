@@ -93,6 +93,7 @@ back, =C-M-u= up, =C-M-d= down)
 
 #+begin_src emacs-lisp
   (require 'clojure-mode)
+  (require 'clojure-test-mode)
 
   (add-hook 'clojure-mode-hook 'run-starter-kit-coding-hook)
   

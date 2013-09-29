@@ -104,7 +104,7 @@
       (slime-js-eval-region (point) (mark) 'slime-js--replace-with-result)
     (slime-js-eval-statement 'slime-js--replace-with-result)))
 
-;;(define-key slime-js-minor-mode-map (kbd "C-x C-e") 'slime-js-eval-current)
+(define-key slime-js-minor-mode-map (kbd "C-x C-e") 'slime-js-eval-current)
 ;;(define-key slime-js-minor-mode-map (kbd "C-c C-e") 'slime-js-eval-and-replace-current)
 
 (provide 'setup-slime-js)

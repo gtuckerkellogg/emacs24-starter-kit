@@ -1,5 +1,7 @@
 #+TITLE:     Greg Tucker-Kellogg's Emacs configuration
 
+
+
 * Front matter                                                :ignoreheading:
 #+AUTHOR:    Greg Tucker-Kellogg
 #+DATE:      2012-06-13 Wed
@@ -43,6 +45,7 @@ sentence ending.  Also in LaTeX.
 #+begin_src emacs-lisp
   (setq sentence-end-double-space nil)
 #+end_src
+
 
 
 * Some functions
@@ -112,10 +115,9 @@ updated version of htmlize.el to fontify the exported code
 I want to use clojure for my usual inferior lisp environment
 
 #+begin_src emacs-lisp
-;;  (setq inferior-lisp-program "lein repl")   
-  (setq inferior-lisp-program "clj")   
-(require 'nrepl)
-(define-key nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-eval-expression-at-point)
+  ;;  (setq inferior-lisp-program "clj")   
+  (require 'nrepl)
+  (define-key nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-eval-expression-at-point)
 #+end_src
 
 #+begin_src emacs-lisp :tangle no :eval no
@@ -457,28 +459,16 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
 
 This is yasnippet behavior, cribbed from emacswiki.  
 
+
 #+begin_src emacs-lisp
     
-    (defun yas/org-very-safe-expand ()
-      (let ((yas/fallback-behavior 'return-nil)) (yas/expand)))
     
-    (defun yas/org-safe-hook ()
-      (require 'yasnippet)
-;;   (yas/initialize)
-      (make-variable-buffer-local 'yas/trigger-key)
-      (setq yas/trigger-key [tab])
-      (add-to-list 'org-tab-first-hook 'yas/org-very-safe-expand)
-      (define-key yas/keymap [tab] 'yas/next-field)
-      )
-         
-    (add-hook 'org-mode-hook 'yas/org-safe-hook)
+  (yas-global-mode 1)
+  (defun yas/minor-mode-off ()
+    (yas/minor-mode -1))
+(setq help-mode-hook nil)
+;;  (add-hook 'help-mode-hook 'yas/minor-mode-off)
   
-  (add-hook 'org-mode-hook
-            (let ((original-command (lookup-key org-mode-map [tab])))
-              `(lambda ()
-                 (setq yas/fallback-behavior
-                       '(apply ,original-command))
-                 (local-set-key [tab] 'yas/expand))))
   
 #+end_src
 
@@ -757,6 +747,8 @@ This is probably going to need revision for version 8.0, to use the filter syste
 
 
 
+
+
 * RefTeX
 
 #+begin_src emacs-lisp :tangle no 
@@ -792,7 +784,6 @@ Babel doesn't seem to connect to a SLIME process.
        (clojure . t)  ;; oh, why doesn't this work?
        )
      )
-  (require 'ess-site)
 #+end_src
 
 
@@ -1017,7 +1008,8 @@ I've been playing with making Slidy slides from org.
 
 #+name: R and ess
 #+begin_src emacs-lisp
-  (require 'ess)
+  (require 'ess-site)
+  ;;(require 'ess)
   (require 'r-autoyas)
   ;;(add-hook 'ess-mode-hook 'r-autoyas-ess-activate)
 #+end_src
@@ -1027,16 +1019,15 @@ I've been playing with making Slidy slides from org.
 * Mac specific stuff
 
 #+begin_src emacs-lisp
-  (set-face-attribute 'default nil  :family "Anonymous Pro" :height 200 )
-  
-  ;; (set-face-attribute 'font-lock-comment-face nil 
-  ;;                     :family "Optima"
-  ;;                     :height 200
-  ;;                     :slant 'italic
-  ;;                     :background "#eeeeee"
-  ;;                     :foreground "#000000"
-  ;;                     )
-  
+   (set-face-attribute 'default nil  :family "Anonymous Pro" :height 160 )
+   
+  (set-face-attribute 'font-lock-comment-face nil 
+                      :family "Monaco"
+                      :slant 'italic
+                      :background "#eeeeee"
+                      :foreground "#444444"
+                      )
+   
 #+END_SRC
 
 #+begin_src emacs-lisp
@@ -1069,7 +1060,6 @@ all events are correctly placed in the agenda.
       (insert (match-string 0))))
   (add-hook 'org-agenda-cleanup-fancy-diary-hook 'org-agenda-cleanup-diary-long-events)
 #+end_src       
-
 
 
 
@@ -1128,4 +1118,19 @@ then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
 (require 'slime)
 (slime-setup '(slime-js slime-repl))
 (require 'setup-slime-js)
+#+END_SRC
+
+
+* NXHTML
+
+#+BEGIN_SRC emacs-lisp
+(load "nxhtml/autostart.el")
+;; Workaround the annoying warnings:
+;;    Warning (mumamo-per-buffer-local-vars):
+;;    Already 'permanent-local t: buffer-file-name
+(when (and (>= emacs-major-version 24)
+           (>= emacs-minor-version 2))
+  (eval-after-load "mumamo"
+    '(setq mumamo-per-buffer-local-vars
+           (delq 'buffer-file-name mumamo-per-buffer-local-vars))))
 #+END_SRC
