@@ -21,3 +21,6 @@
 [submodule "snippets/gtk-yas"]
 	path = snippets/gtk-yas
 	url = https://github.com/gtuckerkellogg/yasnippets.git
+[submodule "snippets/clojure-mode"]
+	path = snippets/clojure-mode
+	url = http://github.com/swannodette/clojure-snippets

@@ -1118,7 +1118,7 @@ then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
 #+END_SRC
 
 
-* NXHTML
+* NXHTML and other miscellany
 
 #+BEGIN_SRC emacs-lisp
 (load "nxhtml/autostart.el")
@@ -1147,3 +1147,8 @@ then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
            (save-buffer)
            (server-edit)))))
 #+END_SRC
+
+
+* Auto complete? 
+
+
