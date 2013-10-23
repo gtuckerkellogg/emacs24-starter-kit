@@ -1,7 +1,5 @@
 #+TITLE:     Greg Tucker-Kellogg's Emacs configuration
 
-
-
 * Front matter                                                :ignoreheading:
 #+AUTHOR:    Greg Tucker-Kellogg
 #+DATE:      2012-06-13 Wed
@@ -52,6 +50,8 @@ sentence ending.  Also in LaTeX.
 
 These are almost trivial functions, but I find them useful
 
+
+
 #+BEGIN_SRC emacs-lisp
   (defun expand-directory-name (d)
     (expand-file-name (concat d "/")))
@@ -62,9 +62,6 @@ These are almost trivial functions, but I find them useful
   (defun turn-off-cua-mode ()
     (cua-mode -1))
 #+END_SRC
-
-
-
 
 
 * File configuration
@@ -168,7 +165,8 @@ I want to use clojure for my usual inferior lisp environment
       (define-key LaTeX-mode-map (kbd "{") 'paredit-open-curly)
       (define-key LaTeX-mode-map (kbd "}") 'paredit-close-curly))
   (add-hook 'LaTeX-mode-hook 'turn-on-curly-paredit)
-  (add-hook 'LaTeX-mode-hook 'flyspell-prog-mode)
+  (add-hook 'LaTeX-mode-hook 'flyspell-mode)
+  (add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
   
   (defun getpackage ()
     (interactive)
@@ -190,9 +188,16 @@ I want to use clojure for my usual inferior lisp environment
   (require 'autoinsert)
   (setq auto-insert-directory (gtk/emacs-subdir "insert"))
   (autoload 'markdown-mode "markdown-mode.el"
-     "Major mode for editing Markdown files" t)
+    "Major mode for editing Markdown files" t)
   (setq auto-mode-alist
-     (cons '("\\.md" . markdown-mode) auto-mode-alist))
+       (cons '("\\.md" . markdown-mode) auto-mode-alist))
+  (add-hook 'markdown-mode-hook
+              (lambda ()
+                (when buffer-file-name
+                  (add-hook 'after-save-hook
+                            'check-parens
+                            nil t))))
+ (add-hook 'markdown-mode-hook (lambda () (modify-syntax-entry ?\" "\"" markdown-mode-syntax-table)))
 #+END_SRC
 
 ** Make dired remove some junk in default view with dired-x
@@ -423,8 +428,6 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
   (define-key global-map "\C-cx"
     (lambda () (interactive) (org-capture nil "i")))
 
-(add-hook 'org-mode-hook (lambda () 
-  (define-key org-mode-map (kbd "C-c g") 'omlg-grab-link)))
 #+end_src
 
 ** Org capture behavior
@@ -636,90 +639,84 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
 *** LaTeX export classes
 
 #+begin_src emacs-lisp
-  (setq org-latex-classes
-                  `(("memoir-article"
-                          (,@ (concat  "\\documentclass[11pt,article,oneside,a4paper,x11names]{memoir}\n"
-                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                       "% -- PACKAGES \n[PACKAGES]\n"
-                                       "% -- EXTRA \n[EXTRA]\n"
-                                       "\\counterwithout{section}{chapter}\n"
-                                       ))
-                          ("\\section{%s}" . "\\section*{%s}")
-                          ("\\subsection{%s}" . "\\subsection*{%s}")
-                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
-                    ("memoir"
-                          (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{memoir}\n"
-                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                       "% -- PACKAGES \n[PACKAGES]\n"
-                                       "% -- EXTRA \n[EXTRA]\n"
-                                       "\\counterwithout{section}{chapter}\n"
-                                       ))
-                          ("\\chapter{%s}" . "\\chapter*{%s}")
-                          ("\\section{%s}" . "\\section*{%s}")
-                          ("\\subsection{%s}" . "\\subsection*{%s}")
-                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
-                    ("article"
-                          (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
-                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                       "% -- PACKAGES \n[PACKAGES]\n"
-                                       "% -- EXTRA \n[EXTRA]\n"
-                                       ))
-                          ("\\section{%s}" . "\\section*{%s}")
-                          ("\\subsection{%s}" . "\\subsection*{%s}")
-                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
-                    ("handout"
-                          (,@ (concat  "\\documentclass[oneside,a4paper,]{tufte-handout}\n"
-                                       "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                       "% -- PACKAGES \n[PACKAGES]\n"
-                                       "% -- EXTRA \n[EXTRA]\n"
-                                       ))
-                          ("\\section{%s}" . "\\section*{%s}")
-                          ("\\subsection{%s}" . "\\subsection*{%s}")
-                          ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                          ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                          ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+    (setq org-latex-classes
+                    `(("memoir-article"
+                            (,@ (concat  "\\documentclass[11pt,article,oneside,a4paper,x11names]{memoir}\n"
+                                         "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                         "% -- PACKAGES \n[PACKAGES]\n"
+                                         "% -- EXTRA \n[EXTRA]\n"
+                                         "\\counterwithout{section}{chapter}\n"
+                                         ))
+                            ("\\section{%s}" . "\\section*{%s}")
+                            ("\\subsection{%s}" . "\\subsection*{%s}")
+                            ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                            ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                            ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                      ("memoir"
+                            (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{memoir}\n"
+                                         "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                         "% -- PACKAGES \n[PACKAGES]\n"
+                                         "% -- EXTRA \n[EXTRA]\n"
+                                         "\\counterwithout{section}{chapter}\n"
+                                         ))
+                            ("\\chapter{%s}" . "\\chapter*{%s}")
+                            ("\\section{%s}" . "\\section*{%s}")
+                            ("\\subsection{%s}" . "\\subsection*{%s}")
+                            ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                            ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                            ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                      ("article"
+                            (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
+                                         "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                         "% -- PACKAGES \n[PACKAGES]\n"
+                                         "% -- EXTRA \n[EXTRA]\n"
+                                         ))
+                            ("\\section{%s}" . "\\section*{%s}")
+                            ("\\subsection{%s}" . "\\subsection*{%s}")
+                            ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                            ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                            ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                      ("handout"
+                            (,@ (concat  "\\documentclass[oneside,a4paper,]{tufte-handout}\n"
+                                         "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                         "% -- PACKAGES \n[PACKAGES]\n"
+                                         "% -- EXTRA \n[EXTRA]\n"
+                                         ))
+                            ("\\section{%s}" . "\\section*{%s}")
+                            ("\\subsection{%s}" . "\\subsection*{%s}")
+                            ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+                            ("\\paragraph{%s}" . "\\paragraph*{%s}")
+                            ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                      )
                     )
-                  )
-  
-  ; (add-to-list 'org-latex-classes '("beamer"
-  ;                                         "\\documentclass[11pt,bigger,a4paper,x11names]{beamer}\n"
-  ;                                         org-beamer-sectioning
-  ;                                         ) 'append)
-  
-  
+    
   (add-to-list 'org-latex-classes '("tufte-handout"
-                                          "\\documentclass[11pt,a4paper,x11names]{tufte-handout}\n"
-                                          ("\\section{%s}" . "\\section*{%s}")
-                                          ("\\subsection{%s}" . "\\subsection*{%s}")
-                                          ) 'append)
-
-(require 'ox-beamer)
-(add-to-list 'org-latex-classes
-             '("beamer"
-               "\\documentclass\[presentation\]\{beamer\}"
-               ("\\section\{%s\}" . "\\section*\{%s\}")
-               ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
-               ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
-
-(defun my-beamer-bold (contents backend info)
-  (when (eq backend 'beamer)
-    (replace-regexp-in-string "\\`\\\\[A-Za-z0-9]+" "\\\\textbf" contents)))
-
-(defun my-beamer-caption (contents backend info)
-  (when (eq backend 'beamer)
-    (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)))
-
-
-(add-to-list 'org-export-filter-final-output-functions 'my-beamer-caption)
-(add-to-list 'org-export-filter-bold-functions 'my-beamer-bold)
+                                            "\\documentclass[11pt,a4paper,x11names]{tufte-handout}\n"
+                                            ("\\section{%s}" . "\\section*{%s}")
+                                            ("\\subsection{%s}" . "\\subsection*{%s}")
+                                            ) 'append)
   
-(setq org-export-allow-bind-keywords 't)
+  (require 'ox-beamer)
+  (add-to-list 'org-latex-classes
+               '("beamer"
+                 "\\documentclass\[presentation\]\{beamer\}"
+                 ("\\section\{%s\}" . "\\section*\{%s\}")
+                 ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
+                 ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
+  
+  (defun my-beamer-bold (contents backend info)
+    (when (eq backend 'beamer)
+      (replace-regexp-in-string "\\`\\\\[A-Za-z0-9]+" "\\\\textbf" contents)))
+  
+  (defun my-beamer-caption (contents backend info)
+    (when (eq backend 'beamer)
+      (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)))
+  
+  
+  (add-to-list 'org-export-filter-final-output-functions 'my-beamer-caption)
+  (add-to-list 'org-export-filter-bold-functions 'my-beamer-bold)
+    
+  (setq org-export-allow-bind-keywords 't)
 #+end_src
 
 *** Removing captions in Beamer
@@ -748,6 +745,11 @@ This is probably going to need revision for version 8.0, to use the filter syste
 
 
 
+
+
+** File applications
+
+The variable org-file
 
 * RefTeX
 
@@ -890,16 +892,6 @@ A citation link
 ** Pre-processing hooks for export
 
 #+begin_src emacs-lisp
-  ;; backend aware export preprocess hook
-  (defun sa-org-export-preprocess-hook ()
-    "My backend aware export preprocess hook."
-    (save-excursion
-      (when (eq org-export-current-backend 'latex)
-        ;; ignoreheading tag for bibliographies and appendices
-        (let* ((tag "ignoreheading"))
-          (org-map-entries (lambda ()
-                             (delete-region (point-at-bol) (point-at-eol)))
-                           (concat ":" tag ":"))))))
   
   (defun my/org-export-ignoreheadings-hook (backend)
     "My backend aware export preprocess hook."
@@ -910,7 +902,6 @@ A citation link
                          (concat ":" tag ":")))
       ))
   
-  (add-hook 'org-export-preprocess-hook 'my/org-export-ignoreheadings-hook)
   (setq org-export-before-processing-hook 'my/org-export-ignoreheadings-hook)
   
 #+end_src
@@ -1031,8 +1022,14 @@ I've been playing with making Slidy slides from org.
 #+END_SRC
 
 #+begin_src emacs-lisp
-;;  (require 'org-mac-link-grabber)
-;;  (define-key org-mode-map (kbd "C-c g") 'omlg-grab-link)
+  
+  (when (getenv "ORG_HOME")
+    (let ((org-contrib-dir (expand-file-name "contrib/lisp" (getenv "ORG_HOME"))))
+      (when (file-directory-p org-contrib-dir)
+        (add-to-list 'load-path org-contrib-dir)
+        )))
+  (require 'org-mac-link)
+  (define-key org-mode-map (kbd "C-c g") 'org-mac-grab-link)
 #+end_src
 
 This (including the comment below) is from
@@ -1101,7 +1098,7 @@ org-mode.
 
 #+BEGIN_SRC emacs-lisp
   (elpy-enable)
-  (require 'python-mode)
+ ;; (require 'python-mode)
   (global-hl-line-mode t)
   (require 'expand-region)
   (global-set-key (kbd "C-=") 'er/expand-region)
@@ -1133,4 +1130,20 @@ then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
   (eval-after-load "mumamo"
     '(setq mumamo-per-buffer-local-vars
            (delq 'buffer-file-name mumamo-per-buffer-local-vars))))
+#+END_SRC
+
+
+#+BEGIN_SRC emacs-lisp
+  (server-start)
+  (add-hook 'before-save-hook 'time-stamp)
+  (add-to-list 'auto-mode-alist '("/mutt" . mail-mode))
+  (add-hook 'mail-mode-hook 'turn-on-auto-fill)
+    (add-hook
+     'mail-mode-hook
+     (lambda ()
+       (define-key mail-mode-map [(control c) (control c)]
+         (lambda ()
+           (interactive)
+           (save-buffer)
+           (server-edit)))))
 #+END_SRC
