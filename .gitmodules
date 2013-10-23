@@ -1,24 +1,27 @@
 [submodule "src/expand-region"]
 	path = src/expand-region
 	url = https://github.com/magnars/expand-region.el.git
-[submodule "snippets/gtk-yas"]
-	path = snippets/gtk-yas
-	url = https://github.com/gtuckerkellogg/yasnips.git
+
 [submodule "src/mark-multiple"]
 	path = src/mark-multiple
 	url = https://github.com/magnars/mark-multiple.el.git
+
 [submodule "snippets/gits/latex-mode"]
 	path = snippets/gits/latex-mode
 	url = https://github.com/madsdk/yasnippets-latex.git
+
 [submodule "src/emacs-chrome"]
 	path = src/emacs-chrome
 	url = https://github.com/stsquad/emacs_chrome.git
+
 [submodule "src/nrepl.el"]
 	path = src/nrepl.el
 	url = https://github.com/kingtim/nrepl.el.git
+
 [submodule "src/ess"]
 	path = src/ess
 	url = https://github.com/emacs-ess/ESS.git
+
 [submodule "org"]
 	path = org
 	url = git://orgmode.org/org-mode.git
