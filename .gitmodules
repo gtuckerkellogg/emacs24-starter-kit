@@ -24,3 +24,9 @@
 [submodule "snippets/clojure-mode"]
 	path = snippets/clojure-mode
 	url = http://github.com/swannodette/clojure-snippets
+[submodule "src/cider"]
+	path = src/cider
+	url = https://github.com/clojure-emacs/cider.git
+[submodule "src/flycheck"]
+	path = src/flycheck
+	url = https://github.com/flycheck/flycheck.git

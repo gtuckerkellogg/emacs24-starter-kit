@@ -1,5 +1,7 @@
 #+TITLE:     Greg Tucker-Kellogg's Emacs configuration
 
+
+
 * Front matter                                                :ignoreheading:
 #+AUTHOR:    Greg Tucker-Kellogg
 #+DATE:      2012-06-13 Wed
@@ -25,10 +27,10 @@
   (setq user-full-name "Greg Tucker-Kellogg"
         user-mail-address "gtuckerkellogg@gmail.com")
   (require 'cl) 
-
+  
 #+END_SRC
 
-* General configuation
+* General configuration
 
 ** Enable minibuffer completion
 
@@ -79,16 +81,12 @@ These are almost trivial functions, but I find them useful
   (defvar my-elisp-dir (convert-standard-filename  
                         (concat dropbox-root "emacs/lisp/"))   
     "Where I will keep some extra personal elisp stuff")
-  (setq abbrev-file-name (concat dropbox-root "emacs/abbrevs"))
 #+end_src
 
 ** Load the desired starter kit packages before my remaining customization
 
 #+name: starter-kit
 #+begin_src emacs-lisp  
-    ;;  (require 'slime)
-    ;;  (require 'slime-clj)
-    ;;  (require 'slime-js)
   (starter-kit-load "misc") 
   (starter-kit-load "misc-recommended") 
   (starter-kit-load "lisp")
@@ -112,9 +110,39 @@ updated version of htmlize.el to fontify the exported code
 I want to use clojure for my usual inferior lisp environment
 
 #+begin_src emacs-lisp
-  ;;  (setq inferior-lisp-program "clj")   
-  (require 'nrepl)
-  (define-key nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-eval-expression-at-point)
+    (require 'cider)
+    (require 'flycheck)
+    (require 'kibit-mode)
+    (add-hook 'clojure-mode-hook 'flycheck-mode)
+    (add-hook 'clojure-mode-hook 'kibit-mode)
+    (define-key kibit-mode-keymap (kbd "C-c C-n") nil)
+    (add-hook 'after-init-hook #'global-flycheck-mode)
+    (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
+    (setq org-babel-clojure-backend 'cider)
+    
+    
+         (require 'ac-nrepl)
+         (add-hook 'cider-repl-mode-hook 'ac-nrepl-setup)
+         (add-hook 'cider-mode-hook 'ac-nrepl-setup)
+         (eval-after-load "auto-complete"
+           '(add-to-list 'ac-modes 'cider-repl-mode))
+    
+    ;; If you want to trigger auto-complete using TAB in nrepl buffers, you may
+    ;; want to use auto-complete in your `completion-at-point-functions':
+    
+         ;; (defun set-auto-complete-as-completion-at-point-function ()
+         ;;   (setq completion-at-point-functions '(auto-complete)))
+         ;; (add-hook 'auto-complete-mode-hook 'set-auto-complete-as-completion-at-point-function)
+    
+         ;; (add-hook 'cider-repl-mode-hook 'set-auto-complete-as-completion-at-point-function)
+         ;; (add-hook 'cider-mode-hook 'set-auto-complete-as-completion-at-point-function)
+    
+    ;; You might consider using ac-nrepl's popup documentation in place of `nrepl-doc':
+    ;;
+         (eval-after-load 'cider
+           '(define-key cider-mode-map (kbd "C-c C-d") 
+              'ac-nrepl-popup-doc))
+    
 #+end_src
 
 #+begin_src emacs-lisp :tangle no :eval no
@@ -132,23 +160,23 @@ I want to use clojure for my usual inferior lisp environment
 #+begin_src emacs-lisp
 ;;(require 'ob)
 
-(add-to-list 'org-babel-tangle-lang-exts '("clojure" . "clj"))
+;;(add-to-list 'org-babel-tangle-lang-exts '("clojure" . "clj"))
 
-(defvar org-babel-default-header-args:clojure 
-  '((:results . "value")))
+;;(defvar org-babel-default-header-args:clojure 
+;;  '((:results . "value")))
 
-(defun org-babel-execute:clojure (body params)
-  "Execute a block of Clojure code with Babel."
-  (nrepl-interactive-eval body))
+; (defun org-babel-execute:clojure (body params)
+;  "Execute a block of Clojure code with Babel."
+;  (nrepl-interactive-eval body))
 
-(add-hook 'org-src-mode-hook
-          '(lambda ()
-             (set (make-local-variable 'nrepl-buffer-ns) 
-                  (with-current-buffer 
-                      (overlay-buffer org-edit-src-overlay)
-                    nrepl-buffer-ns))))
+; (add-hook 'org-src-mode-hook
+;           '(lambda ()
+;;              (set (make-local-variable 'nrepl-buffer-ns) 
+;;                   (with-current-buffer 
+;;                       (overlay-buffer org-edit-src-overlay)
+;;                   nrepl-buffer-ns))))
 
-(provide 'ob-clojure)
+;;(provide 'ob-clojure)
 
 #+end_src
 
@@ -158,14 +186,19 @@ I want to use clojure for my usual inferior lisp environment
 
 #+begin_src emacs-lisp
     (setq-default TeX-master t)
-    (add-hook 'LaTeX-mode-hook 'turn-on-paredit)
     (setq TeX-PDF-mode t)
-    (defun turn-on-curly-paredit ()
-      (interactive)
-      (define-key LaTeX-mode-map (kbd "{") 'paredit-open-curly)
-      (define-key LaTeX-mode-map (kbd "}") 'paredit-close-curly))
-  (add-hook 'LaTeX-mode-hook 'turn-on-curly-paredit)
+     (defun turn-on-curly-paredit ()
+       (interactive)
+       (define-key LaTeX-mode-map (kbd "{") 'paredit-open-curly)
+       (define-key LaTeX-mode-map (kbd "}") 'paredit-close-curly))
+  ;; (add-hook 'LaTeX-mode-hook 'turn-on-curly-paredit)
   (add-hook 'LaTeX-mode-hook 'flyspell-mode)
+  
+  (defun gtk/flyspell-check-next-error ()
+    (interactive)
+    (flyspell-goto-next-error)
+    (ispell-word))
+  
   (add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
   
   (defun getpackage ()
@@ -215,17 +248,17 @@ I want to use clojure for my usual inferior lisp environment
 
 #+begin_src emacs-lisp
   (require 'js2-mode)
-;;  (require 'scss-mode-autoloads)
 #+end_src
 
-
+** Clojure
 
 * Spelling
 
 #+begin_src emacs-lisp
-(global-set-key (kbd "<f8>") 'ispell-word)
-(global-set-key (kbd "S-<f8>") 'flyspell-mode)
-(global-set-key (kbd "M-S-<f8>") 'flyspell-prog-mode)
+  (global-set-key (kbd "<f8>") 'gtk/flyspell-check-next-error)
+  (global-set-key (kbd "S-<f8>") 'flyspell-mode)
+  (global-set-key (kbd "M-S-<f8>") 'flyspell-prog-mode)
+  (setq ispell-dictionary "en_GB")
 #+end_src
 
 * Key bindings
@@ -303,15 +336,17 @@ Org miscellany
 #+begin_src emacs-lisp
 ;;(require 'org)
 ;;(setq org-modules '(org-bbdb org-bibtex org-info org-jsinfo org-w3m))
-(add-to-list 'org-modules 'ox-latex)
+(add-to-list 'org-modules 'ox-latex 'org-agenda)
+(add-to-list 'org-modules 'org-agenda)
 ;;(add-to-list 'org-modules 'org-mac-iCal) 
 ;;(add-to-list 'org-modules 'org-mac-message)
 ;;(add-to-list 'org-modules 'org-mac-link-grabber)
-;;(add-to-list 'org-modules 'org-habit)
+(add-to-list 'org-modules 'org-habit)
 ;;(setq org-mac-mail-account "NUS")
 ;;(add-to-list 'org-modules 'org-taskjuggler)  
 ;(add-to-list 'org-modules 'org-special-blocks)  
 (add-to-list 'org-export-backends 'beamer 'append)
+(add-to-list 'org-export-backends 'otd'append)
 #+end_src
 
 I want the habits display to be a little to the right. I'll use the
@@ -464,15 +499,27 @@ This is yasnippet behavior, cribbed from emacswiki.
 
 
 #+begin_src emacs-lisp
+        
+        
+      (yas-global-mode 1)
+      (defun yas/minor-mode-off ()
+        (interactive)
+        (yas/minor-mode -1))
+    (setq help-mode-hook nil)
+(require 'rainbow-delimiters)
+
+(add-hook 'prog-mode-hook 'rainbow-delimiters-mode)
+    ;;  (add-hook 'help-mode-hook 'yas/minor-mode-off)
     
-    
-  (yas-global-mode 1)
-  (defun yas/minor-mode-off ()
-    (yas/minor-mode -1))
-(setq help-mode-hook nil)
-;;  (add-hook 'help-mode-hook 'yas/minor-mode-off)
+    (add-to-list 'yas-snippet-dirs "~/.emacs.d/snippets/gits")
+    (add-to-list 'yas-snippet-dirs "~/.emacs.d/snippets/mine")
+  ;;  (yas-load-directory "~/.emacs.d/snippets/mine/latex-mode")
+  ;;  (yas-load-directory "~/.emacs.d/snippets/gits/latex-mode")
+  ;  (yas/load-directory "~/.emacs.d/snippets/gits/latex-mode/")
+      
   
   
+      
 #+end_src
 
 
@@ -573,7 +620,6 @@ really for pdflatex, not xelatex and lualatex.
   (setq org-latex-default-packages-alist
         '(("" "fixltx2e" nil)
           ("" "longtable" nil)
-;;          ("" "floatrow" nil)
           ("" "graphicx" t)
           ("" "wrapfig" nil)
           ("" "soul" t)
@@ -581,7 +627,6 @@ really for pdflatex, not xelatex and lualatex.
           ("" "marvosym" t)
           ("" "wasysym" t)
           ("" "latexsym" t)
-          ;;("" "amssymb" t)
           ("" "tabularx" nil)
           ("" "booktabs" nil)
           ("" "xcolor" nil)
@@ -617,7 +662,7 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
              ("lualatex" . (("" "url" t)
                          ("" "fontspec" t)
                             ("" "varioref"  nil)
-                            ("" "hyperref"  nil)
+                            ("hidelinks" "hyperref"  nil)
                             ("capitalize,noabbrev" "cleveref"  nil)
                          ,my-org-minted-config ))
              ))
@@ -713,6 +758,7 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
       (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)))
   
   
+  
   (add-to-list 'org-export-filter-final-output-functions 'my-beamer-caption)
   (add-to-list 'org-export-filter-bold-functions 'my-beamer-bold)
     
@@ -755,6 +801,16 @@ The variable org-file
 
 #+begin_src emacs-lisp :tangle no 
 (add-hook 'LaTeX-mode-hook 'turn-on-reftex)
+
+(setq TeX-view-program-selection
+      '((output-dvi "DVI Viewer")
+        (output-pdf "PDF Viewer")
+        (output-html "Google Chrome")))
+(setq TeX-view-program-list
+      '(("DVI Viewer" "evince %o")
+        ("PDF Viewer" "open %o")
+        ("Google Chrome" "google-chrome %o")))
+
 (setq reftex-plug-into-AUCTeX t)
 (defun org-mode-reftex-setup ()
   (load-library "reftex")
@@ -773,19 +829,19 @@ leiningen projects, and "clj" works when running ~inferior-lisp~, Org
 Babel doesn't seem to connect to a SLIME process.
 
 #+begin_src emacs-lisp
-    (org-babel-do-load-languages
-     'org-babel-load-languages
-     '((emacs-lisp . t)
-       (R . t)
-       (dot . t)
-       (ruby . t)
-       (python . t)  ;; requires return statement
-       (sh . t)
-       (perl . t)
-       (latex . t)
-       (clojure . t)  ;; oh, why doesn't this work?
-       )
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((emacs-lisp . t)
+     (R . t)
+     (dot . t)
+     (ruby . t)
+     (python . t)  ;; requires return statement
+     (sh . t)
+     (perl . t)
+     (latex . t)
+     (clojure . t)  ;; oh, why doesn't this work?
      )
+   )
 #+end_src
 
 
@@ -957,7 +1013,7 @@ The code below is because some additional brushes are installed in my
 WordPress
 
 #+begin_src emacs-lisp :tangle no :eval no
-       (add-to-list 'org2blog/wp-sourcecode-langs "clojure")
+;;       (add-to-list 'org2blog/wp-sourcecode-langs "clojure")
        (add-to-list 'org2blog/wp-sourcecode-langs "r")
        (add-to-list 'org2blog/wp-sourcecode-langs "lisp")
        (add-to-list 'org2blog/wp-sourcecode-langs "html")
@@ -1000,9 +1056,12 @@ I've been playing with making Slidy slides from org.
 #+name: R and ess
 #+begin_src emacs-lisp
   (require 'ess-site)
-  ;;(require 'ess)
-  (require 'r-autoyas)
-  ;;(add-hook 'ess-mode-hook 'r-autoyas-ess-activate)
+     ;;(require 'ess)
+     (require 'r-autoyas)
+   (add-hook 'ess-mode-hook 'r-autoyas-ess-activate)
+   ;;(add-hook 'ess-mode-hook 'turn-off-paredit)
+  (add-hook 'ess-mode-hook 'turn-on-auto-complete)
+
 #+end_src
 
 
@@ -1010,7 +1069,7 @@ I've been playing with making Slidy slides from org.
 * Mac specific stuff
 
 #+begin_src emacs-lisp
-   (set-face-attribute 'default nil  :family "Anonymous Pro" :height 160 )
+  (set-face-attribute 'default nil  :family "Anonymous Pro" :height 160 )
    
   (set-face-attribute 'font-lock-comment-face nil 
                       :family "Monaco"
@@ -1028,8 +1087,8 @@ I've been playing with making Slidy slides from org.
       (when (file-directory-p org-contrib-dir)
         (add-to-list 'load-path org-contrib-dir)
         )))
-  (require 'org-mac-link)
-  (define-key org-mode-map (kbd "C-c g") 'org-mac-grab-link)
+  ;;(require 'org-mac-link)
+  ;;(define-key org-mode-map (kbd "C-c g") 'org-mac-grab-link)
 #+end_src
 
 This (including the comment below) is from
@@ -1084,10 +1143,11 @@ all events are correctly placed in the agenda.
 #+END_SRC
 
 
-* Reveal
+* Other exporters
 
 #+BEGIN_SRC emacs-lisp
 (require 'ox-reveal)
+(require 'ox-md)
 #+END_SRC
 
 
@@ -1097,11 +1157,13 @@ I had to remove cython and yasnippet extensions to not screw up
 org-mode.
 
 #+BEGIN_SRC emacs-lisp
-  (elpy-enable)
- ;; (require 'python-mode)
-  (global-hl-line-mode t)
-  (require 'expand-region)
-  (global-set-key (kbd "C-=") 'er/expand-region)
+  (package-initialize)
+   (elpy-enable)
+   (elpy-use-ipython)
+  ;; (require 'python-mode)
+   (global-hl-line-mode t)
+   (require 'expand-region)
+   (global-set-key (kbd "C-=") 'er/expand-region)
 #+END_SRC
 
 
@@ -1151,4 +1213,72 @@ then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
 
 * Auto complete? 
 
+#+BEGIN_SRC emacs-lisp
+          
+        (require 'auto-complete-config)
+        (setq ac-source-yasnippet nil)
+        (ac-config-default)
+        (global-auto-complete-mode t)    
+    
+  (define-key ac-completing-map (kbd "C-n") 'ac-next)
+  (define-key ac-completing-map (kbd "C-p") 'ac-previous)
+  (define-key ac-completing-map "\r" 'ac-complete)
+  (define-key ac-completing-map [return] 'ac-complete)
+  
+  (defun turn-on-auto-complete ()
+    "turn on auto-complete"
+    (interactive)
+    (auto-complete-mode 1))
+  
+  (defun turn-off-auto-complete ()
+    "turn off auto-complete"
+    (interactive)
+    (auto-complete-mode 0))
+  
+  (defadvice ac-common-setup
+    (after give-yasnippet-highest-priority activate)
+    "Make sure that yasnippet is at the top of the list for all auto-complete sources "
+    (setq ac-sources (delq 'ac-source-yasnippet ac-sources))
+    (add-to-list 'ac-sources 'ac-source-yasnippet))
+  
+          
+            
+#+END_SRC
 
+
+
+* multiple cursors
+
+#+BEGIN_SRC emacs-lisp
+(require 'multiple-cursors)
+(global-set-key (kbd "C-M-c") 'mc/edit-lines)
+(global-set-key (kbd "C->") 'mc/mark-next-like-this)
+(global-set-key (kbd "C-<") 'mc/mark-previous-like-this)
+(global-set-key (kbd "C-c C-<") 'mc/mark-all-like-this)
+#+END_SRC
+
+
+* Web jump 
+
+#+BEGIN_SRC emacs-lisp :results silent
+(eval-after-load "webjump"
+'(add-to-list 'webjump-sites
+             '("google" .
+               [simple-query
+                "www.google.com"
+                "http://www.google.com/search?q="
+                ""])))
+(global-set-key (kbd "C-x g") 'webjump)
+
+#+END_SRC
+
+
+* virtualenv
+
+#+BEGIN_SRC emacs-lisp
+(require 'virtualenvwrapper)
+(venv-initialize-interactive-shells) ;; if you want interactive shell support
+(venv-initialize-eshell) ;; if you want eshell support
+(setq venv-location "~/.virtualenvs")
+
+#+END_SRC
