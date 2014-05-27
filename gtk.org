@@ -1,10 +1,7 @@
 #+TITLE:     Greg Tucker-Kellogg's Emacs configuration
 
-
-
 * Front matter                                                :ignoreheading:
 #+AUTHOR:    Greg Tucker-Kellogg
-#+DATE:      2012-06-13 Wed
 #+DESCRIPTION:
 #+KEYWORDS:
 #+LANGUAGE:  en
@@ -20,14 +17,15 @@
 #+PROPERTY: tangle yes 
 #+LATEX_HEADER: \usepackage{gtuckerkellogg} 
 
+
 * General information
 
 #+name: me
 #+BEGIN_SRC emacs-lisp
   (setq user-full-name "Greg Tucker-Kellogg"
         user-mail-address "gtuckerkellogg@gmail.com")
-  (require 'cl) 
-  
+  (require 'cl)
+
 #+END_SRC
 
 * General configuration
@@ -51,8 +49,6 @@ sentence ending.  Also in LaTeX.
 * Some functions
 
 These are almost trivial functions, but I find them useful
-
-
 
 #+BEGIN_SRC emacs-lisp
   (defun expand-directory-name (d)
@@ -83,13 +79,26 @@ These are almost trivial functions, but I find them useful
     "Where I will keep some extra personal elisp stuff")
 #+end_src
 
+** Check Dependencies
+
+Determine whether required packages are installed. If not, use ELPA to
+install them. Other dependencies are provided by Emacs 24.
+#+begin_src emacs-lisp
+  (dolist (package '(cider flycheck kibit-mode ac-nrepl autoinsert visual-regexp
+                           dired+ js2-mode typopunct rainbow-delimiters popwin
+                           ess r-autoyas gist expand-region multiple-cursors
+                           virtualenvwrapper smartparens))
+    (unless (package-installed-p package)
+      (package-install package)))
+#+end_src
+
 ** Load the desired starter kit packages before my remaining customization
 
 #+name: starter-kit
 #+begin_src emacs-lisp  
   (starter-kit-load "misc") 
   (starter-kit-load "misc-recommended") 
-  (starter-kit-load "lisp")
+  (starter-kit-load "lisp" )
   (starter-kit-load "bindings")
   (starter-kit-load "ruby")
   (starter-kit-load "perl")
@@ -98,6 +107,12 @@ These are almost trivial functions, but I find them useful
   (setq debug-on-error t)
 #+end_src
 
+** Popwin!
+
+#+BEGIN_SRC emacs-lisp
+(require 'popwin)
+(popwin-mode 1)
+#+END_SRC
 
 I want to make sure the contrib directory is available, since I use an
 updated version of htmlize.el to fontify the exported code
@@ -105,56 +120,57 @@ updated version of htmlize.el to fontify the exported code
 #+name contribs
 #+begin_src emacs-lisp
   (setq custom-theme-directory  (gtk/emacs-subdir "themes"))
-#+end_src
 
-I want to use clojure for my usual inferior lisp environment
+(defun disable-all-themes ()
+  "disable all active themes."
+  (dolist (i custom-enabled-themes)
+    (disable-theme i)))
+
+(defadvice load-theme (before disable-themes-first activate)
+  (disable-all-themes))
+#+end_src
 
 #+begin_src emacs-lisp
-    (require 'cider)
-    (require 'flycheck)
-    (require 'kibit-mode)
-    (add-hook 'clojure-mode-hook 'flycheck-mode)
-    (add-hook 'clojure-mode-hook 'kibit-mode)
-    (define-key kibit-mode-keymap (kbd "C-c C-n") nil)
-    (add-hook 'after-init-hook #'global-flycheck-mode)
-    (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
-    (setq org-babel-clojure-backend 'cider)
-    
-    
-         (require 'ac-nrepl)
-         (add-hook 'cider-repl-mode-hook 'ac-nrepl-setup)
-         (add-hook 'cider-mode-hook 'ac-nrepl-setup)
-         (eval-after-load "auto-complete"
-           '(add-to-list 'ac-modes 'cider-repl-mode))
-    
-    ;; If you want to trigger auto-complete using TAB in nrepl buffers, you may
-    ;; want to use auto-complete in your `completion-at-point-functions':
-    
-         ;; (defun set-auto-complete-as-completion-at-point-function ()
-         ;;   (setq completion-at-point-functions '(auto-complete)))
-         ;; (add-hook 'auto-complete-mode-hook 'set-auto-complete-as-completion-at-point-function)
-    
-         ;; (add-hook 'cider-repl-mode-hook 'set-auto-complete-as-completion-at-point-function)
-         ;; (add-hook 'cider-mode-hook 'set-auto-complete-as-completion-at-point-function)
-    
-    ;; You might consider using ac-nrepl's popup documentation in place of `nrepl-doc':
-    ;;
-         (eval-after-load 'cider
-           '(define-key cider-mode-map (kbd "C-c C-d") 
-              'ac-nrepl-popup-doc))
-    
-#+end_src
+      (require 'cider)
+      (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
+      (setq cider-repl-print-length 100)
+      (setq nrepl-hide-special-buffers t)
+      (setq cider-prompt-save-file-on-load nil)
+      (setq cider-repl-result-prefix ";; => ")
+    (setq cider-repl-popup-stacktraces t)
+    (setq cider-auto-select-error-buffer t)
 
-#+begin_src emacs-lisp :tangle no :eval no
-(defun org-babel-execute:clojure (body params)
-  "Evaluate a block of Clojure code with Babel."
-  (concat "=> "
-          (if (fboundp 'slime-eval)
-              (slime-eval `(swank:interactive-eval-region ,body))
-           (if (fboundp 'lisp-eval-string)
-             (lisp-eval-string body)
-              (error "You have to start a clojure repl first!")))))
-  #+end_src
+  (require 'flycheck)
+  (eval-after-load 'flycheck '(setq flycheck-checkers (delq 'emacs-lisp-checkdoc flycheck-checkers)))
+  (require 'kibit-mode)
+  (add-hook 'clojure-mode-hook 'flycheck-mode)
+  (add-hook 'clojure-mode-hook 'kibit-mode)
+  (defun turn-off-paredit ()
+    (paredit-mode -1))
+  (add-hook 'clojure-mode-hook 'turn-on-paredit :append)
+  (add-hook 'emacs-lisp-mode-hook 'turn-on-paredit :append)
+  (add-hook 'lisp-mode-hook 'turn-on-paredit :append)
+        (define-key kibit-mode-keymap (kbd "C-c C-n") nil)
+        (add-hook 'after-init-hook #'global-flycheck-mode)
+
+    ;; ;; this is some stuff I will remove just for the time being
+    ;; for autocompletion, i've been using ac-nrepl
+    ;;    (require 'ac-nrepl)
+    ;;    (add-hook 'cider-repl-mode-hook 'ac-nrepl-setup)
+    ;;    (add-hook 'cider-mode-hook 'ac-nrepl-setup)
+    ;;    (eval-after-load "auto-complete"
+    ;;                   '(add-to-list 'ac-modes 'cider-repl-mode))
+
+    ;;; let's try compliment
+
+    (require 'ac-cider-compliment)
+    (add-hook 'cider-mode-hook 'ac-flyspell-workaround)
+    (add-hook 'cider-mode-hook 'ac-cider-compliment-setup)
+    (add-hook 'cider-repl-mode-hook 'ac-cider-compliment-repl-setup)
+    (eval-after-load "auto-complete"
+      '(add-to-list 'ac-modes cider-mode))
+
+#+end_src
 
 
 #+begin_src emacs-lisp
@@ -185,22 +201,17 @@ I want to use clojure for my usual inferior lisp environment
 * LaTeX
 
 #+begin_src emacs-lisp
-    (setq-default TeX-master t)
-    (setq TeX-PDF-mode t)
-     (defun turn-on-curly-paredit ()
-       (interactive)
-       (define-key LaTeX-mode-map (kbd "{") 'paredit-open-curly)
-       (define-key LaTeX-mode-map (kbd "}") 'paredit-close-curly))
-  ;; (add-hook 'LaTeX-mode-hook 'turn-on-curly-paredit)
+  (setq-default TeX-master t)
+  (setq TeX-PDF-mode t)
   (add-hook 'LaTeX-mode-hook 'flyspell-mode)
-  
+
   (defun gtk/flyspell-check-next-error ()
     (interactive)
     (flyspell-goto-next-error)
     (ispell-word))
-  
+
   (add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
-  
+
   (defun getpackage ()
     (interactive)
     (search-backward "\\")
@@ -231,14 +242,16 @@ I want to use clojure for my usual inferior lisp environment
                             'check-parens
                             nil t))))
  (add-hook 'markdown-mode-hook (lambda () (modify-syntax-entry ?\" "\"" markdown-mode-syntax-table)))
+;; (require 'visual-regexp)
 #+END_SRC
 
 ** Make dired remove some junk in default view with dired-x
 
 #+begin_src emacs-lisp
-  (require 'dired-x)
+ (require 'dired-x)
+  (require 'dired+)
   (setq dired-omit-files
-        (concat dired-omit-files "\\|^\\..+$"))
+       (concat dired-omit-files "\\|^\\..+$"))
   (add-hook 'dired-mode-hook 'dired-omit-mode)
 #+end_src
 
@@ -255,6 +268,13 @@ I want to use clojure for my usual inferior lisp environment
 * Spelling
 
 #+begin_src emacs-lisp
+  (add-hook 'LaTeX-mode-hook 'flyspell-mode)
+  
+  (defun gtk/flyspell-check-next-error ()
+    (interactive)
+    (flyspell-goto-next-error)
+    (ispell-word))
+
   (global-set-key (kbd "<f8>") 'gtk/flyspell-check-next-error)
   (global-set-key (kbd "S-<f8>") 'flyspell-mode)
   (global-set-key (kbd "M-S-<f8>") 'flyspell-prog-mode)
@@ -308,7 +328,6 @@ Org miscellany
   (setq org-outline-path-complete-in-steps nil)
 #+end_src
 
-
 *** Getting smart quotes
 
 #+begin_src emacs-lisp
@@ -321,32 +340,16 @@ Org miscellany
 
 
 
-** TODO Emphasis
-
-#+begin_src emacs-lisp :tangle yes
-;;  (add-to-list 'org-emphasis-alist '("@" org-warning "<b>" "</b>"))
-;;  (add-to-list 'org-emphasis-alist '("情" org-warning "<b>" "</b>"))
-
-;;; This doesn't work <2013-06-13 Thu>
-;;  (add-to-list 'org-export-latex-emphasis-alist '("@" "\\alert{%s}" nil))
-#+end_src
-
 ** Org Modules
 
 #+begin_src emacs-lisp
-;;(require 'org)
-;;(setq org-modules '(org-bbdb org-bibtex org-info org-jsinfo org-w3m))
-(add-to-list 'org-modules 'ox-latex 'org-agenda)
-(add-to-list 'org-modules 'org-agenda)
-;;(add-to-list 'org-modules 'org-mac-iCal) 
-;;(add-to-list 'org-modules 'org-mac-message)
-;;(add-to-list 'org-modules 'org-mac-link-grabber)
-(add-to-list 'org-modules 'org-habit)
-;;(setq org-mac-mail-account "NUS")
-;;(add-to-list 'org-modules 'org-taskjuggler)  
-;(add-to-list 'org-modules 'org-special-blocks)  
-(add-to-list 'org-export-backends 'beamer 'append)
-(add-to-list 'org-export-backends 'otd'append)
+  (add-to-list 'org-modules 'ox-latex)
+  (add-to-list 'org-modules 'ox-odt)
+  (add-to-list 'org-modules 'org-agenda)
+  (add-to-list 'org-modules 'org-habit)
+  (add-to-list 'org-export-backends 'beamer :append)
+  (add-to-list 'org-export-backends 'odt :append)
+
 #+end_src
 
 I want the habits display to be a little to the right. I'll use the
@@ -372,7 +375,7 @@ Chinese character 今 for today, and a ☺ for completed habits
 
      (defvar my/organizer
         (expand-file-name (concat org-directory "/organizer.org")) 
-          "My main tasks list") 
+          "My main tasks list")
      
      (defvar my/journal
        (expand-file-name (concat dropbox-root "/_inbox/journal.org"))
@@ -394,7 +397,7 @@ I use the diary to bring stuff in from the MacOS iCal
 
 
 #+name agenda-commands
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :eval no
   (setq org-agenda-custom-commands
              '(("i" "Import diary from iCal" agenda ""
                 ((org-agenda-mode-hook
@@ -408,23 +411,17 @@ I use the diary to bring stuff in from the MacOS iCal
 
 #+name: next-actions
 #+begin_src emacs-lisp
+
   (defun GTD ()
     "Go to my main GTD next action lists"
     (interactive)
     (find-file my/organizer))
+
+
   (setq org-todo-keywords
              '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!/!)")
                (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)")))
-       
-  ;; (setq org-todo-keyword-faces
-  ;;       (quote (("TODO" :foreground "red" :weight bold)
-  ;;               ("NEXT" :foreground "blue" :weight bold)
-  ;;               ("DONE" :foreground "forest green" :weight bold)
-  ;;               ("WAITING" :foreground "orange" :weight bold)
-  ;;               ("HOLD" :foreground "magenta" :weight bold)
-  ;;               ("CANCELLED" :foreground "forest green" :weight bold)
-  ;;               )))
-       
+
   (setq org-todo-state-tags-triggers
         (quote (("CANCELLED" ("CANCELLED" . t))
                 ("WAITING" ("WAITING" . t))
@@ -445,10 +442,36 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
   (setq org-global-properties
         '(("CATEGORY_ALL" 
            . "Family Finance Work Health Relationships Self Explore Other")))
-  (setq org-columns-default-format "%35ITEM %TODO %3PRIORITY %10CATEGORY %TAGS") 
+  (setq org-columns-default-format "%35ITEM %TODO %3PRIORITY %20CATEGORY %TAGS") 
 #+end_src 
 
 
+*** Context in tags
+
+My default tags should be context
+
+#+BEGIN_SRC emacs-lisp
+      (setq org-tag-persistent-alist
+            '((:startgroup . nil)
+              ("@Office" . ?o)
+              ("@Computer" . ?c)
+              ("@Internet" . ?i)
+              ("@Home" . ?h)
+              ("@Errands" . ?e)
+              (:endgroup . nil)
+              (:startgroup . nil)
+              ("Project" . ?p)
+              ("Agenda" . ?a)
+              (:endgroup . nil)
+              ("FLAGGED" . ?f)))
+
+#+END_SRC
+
+But project tags should never be inherited
+
+#+BEGIN_SRC emacs-lisp
+  (setq org-tags-exclude-from-inheritance '("Project"))
+#+END_SRC
 ** Key bindings in Org
 
 #+begin_src emacs-lisp
@@ -475,8 +498,8 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
            "* %?\n\nEntered on %U\n  %i\n  %a" )
           ("j" "Journal entries" entry (file+datetree my/journal)
            "* %?\n\nEntered on %U\n  %i\n  %a" )
-          ("w" "Tweets!" plain (file+datetree my/journal)
-           "* %?  Entered on %U\n  %i\n" )
+          ("J" "Journal entries from nowhere" entry (file+datetree my/journal)
+           "* %?\n\nEntered on %U\n  %i\n " )
           ))
 #+end_src 
  
@@ -520,15 +543,6 @@ This is yasnippet behavior, cribbed from emacswiki.
   
   
       
-#+end_src
-
-
-** Time logging
-
-#+begin_src emacs-lisp
-;;  (setq org-clock-persist 'history)
-;;  (org-clock-persistence-insinuate)   
-;;  (setq org-log-into-drawer t) 
 #+end_src
 
 
@@ -721,6 +735,16 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
                             ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
                             ("\\paragraph{%s}" . "\\paragraph*{%s}")
                             ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))
+                      ("book"
+                       (,@ (concat  "\\documentclass[]{book}\n"
+                                    "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                    "% -- PACKAGES \n[PACKAGES]\n"
+                                    "% -- EXTRA \n[EXTRA]\n"
+                                    ))
+                       ("\\chapter{%s}" . "\\chapter*{%s}")
+                       ("\\section{%s}" . "\\section*{%s}")
+                       ("\\subsection{%s}" . "\\subsection*{%s}")
+                       ("\\subsubsection{%s}" . "\\subsubsection*{%s}"))
                       ("handout"
                             (,@ (concat  "\\documentclass[oneside,a4paper,]{tufte-handout}\n"
                                          "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
@@ -740,7 +764,7 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
                                             ("\\section{%s}" . "\\section*{%s}")
                                             ("\\subsection{%s}" . "\\subsection*{%s}")
                                             ) 'append)
-  
+
   (require 'ox-beamer)
   (add-to-list 'org-latex-classes
                '("beamer"
@@ -748,17 +772,17 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
                  ("\\section\{%s\}" . "\\section*\{%s\}")
                  ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
                  ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
-  
+
   (defun my-beamer-bold (contents backend info)
     (when (eq backend 'beamer)
       (replace-regexp-in-string "\\`\\\\[A-Za-z0-9]+" "\\\\textbf" contents)))
-  
+
   (defun my-beamer-caption (contents backend info)
     (when (eq backend 'beamer)
       (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)))
-  
-  
-  
+
+
+
   (add-to-list 'org-export-filter-final-output-functions 'my-beamer-caption)
   (add-to-list 'org-export-filter-bold-functions 'my-beamer-bold)
     
@@ -823,10 +847,6 @@ The variable org-file
 
 ** Org Babel
 
-I love using Org Babel.  So much fun.  Everything seems to work well
-except for Clojure.  Not sure why, but while Clojure works in
-leiningen projects, and "clj" works when running ~inferior-lisp~, Org
-Babel doesn't seem to connect to a SLIME process.
 
 #+begin_src emacs-lisp
   (org-babel-do-load-languages
@@ -838,6 +858,7 @@ Babel doesn't seem to connect to a SLIME process.
      (python . t)  ;; requires return statement
      (sh . t)
      (perl . t)
+     (ledger . t)
      (latex . t)
      (clojure . t)  ;; oh, why doesn't this work?
      )
@@ -1056,12 +1077,9 @@ I've been playing with making Slidy slides from org.
 #+name: R and ess
 #+begin_src emacs-lisp
   (require 'ess-site)
-     ;;(require 'ess)
-     (require 'r-autoyas)
-   (add-hook 'ess-mode-hook 'r-autoyas-ess-activate)
-   ;;(add-hook 'ess-mode-hook 'turn-off-paredit)
+  (require 'r-autoyas)
+  (add-hook 'ess-mode-hook 'r-autoyas-ess-activate)
   (add-hook 'ess-mode-hook 'turn-on-auto-complete)
-
 #+end_src
 
 
@@ -1069,14 +1087,16 @@ I've been playing with making Slidy slides from org.
 * Mac specific stuff
 
 #+begin_src emacs-lisp
-  (set-face-attribute 'default nil  :family "Anonymous Pro" :height 160 )
+ ;;(set-face-attribute 'default nil  :family "Anonymous Pro" :height 220 :weight 'bold)
+ (set-face-attribute 'default nil  :family "Consolas" :height 220 :weight 'normal)
+;; (set-face-attribute 'default nil  :family "Inconsolata" :height 220 :weight 'bold)
    
-  (set-face-attribute 'font-lock-comment-face nil 
-                      :family "Monaco"
-                      :slant 'italic
-                      :background "#eeeeee"
-                      :foreground "#444444"
-                      )
+  ;; (set-face-attribute 'font-lock-comment-face nil 
+  ;;                     :family "Monaco"
+  ;;                     :slant 'italic
+  ;;                     :background "#eeeeee"
+  ;;                     :foreground "#444444"
+  ;;                     )
    
 #+END_SRC
 
@@ -1121,9 +1141,11 @@ all events are correctly placed in the agenda.
 
 * Git
 
-#+begin_src emacs-lisp
-;;(require 'gist)
 
+#+begin_src emacs-lisp
+(require 'gist)
+(require 'git-gutter)
+(global-git-gutter-mode +1)
 #+end_src
 
 
@@ -1157,13 +1179,13 @@ I had to remove cython and yasnippet extensions to not screw up
 org-mode.
 
 #+BEGIN_SRC emacs-lisp
-  (package-initialize)
-   (elpy-enable)
-   (elpy-use-ipython)
-  ;; (require 'python-mode)
-   (global-hl-line-mode t)
-   (require 'expand-region)
-   (global-set-key (kbd "C-=") 'er/expand-region)
+    (package-initialize)
+     (elpy-enable)
+     (elpy-use-ipython)
+    ;; (require 'python-mode)
+     (global-hl-line-mode t)
+     (require 'expand-region)
+     (global-set-key (kbd "C-=") 'er/expand-region)
 #+END_SRC
 
 
@@ -1174,24 +1196,24 @@ Run this by running swank-js from a command line
 then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
 
 #+BEGIN_SRC emacs-lisp
-(require 'slime)
-(slime-setup '(slime-js slime-repl))
-(require 'setup-slime-js)
+  ;(require 'slime)
+  ;(slime-setup '(slime-js slime-repl))
+  ;(require 'setup-slime-js)
 #+END_SRC
 
 
 * NXHTML and other miscellany
 
-#+BEGIN_SRC emacs-lisp
-(load "nxhtml/autostart.el")
-;; Workaround the annoying warnings:
-;;    Warning (mumamo-per-buffer-local-vars):
-;;    Already 'permanent-local t: buffer-file-name
-(when (and (>= emacs-major-version 24)
-           (>= emacs-minor-version 2))
-  (eval-after-load "mumamo"
-    '(setq mumamo-per-buffer-local-vars
-           (delq 'buffer-file-name mumamo-per-buffer-local-vars))))
+#+BEGIN_SRC emacs-lisp :eval no :tangle no
+  (load "nxhtml/autostart.el")     
+  ;; Workaround the annoying warnings:
+  ;;    Warning (mumamo-per-buffer-local-vars):
+  ;;    Already 'permanent-local t: buffer-file-name
+  (when (and (>= emacs-major-version 24)
+             (>= emacs-minor-version 2))
+    (eval-after-load "mumamo"
+      '(setq mumamo-per-buffer-local-vars
+             (delq 'buffer-file-name mumamo-per-buffer-local-vars))))
 #+END_SRC
 
 
@@ -1224,7 +1246,9 @@ then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
   (define-key ac-completing-map (kbd "C-p") 'ac-previous)
   (define-key ac-completing-map "\r" 'ac-complete)
   (define-key ac-completing-map [return] 'ac-complete)
+  (define-key ac-completing-map [tab] 'ac-complete)
   
+
   (defun turn-on-auto-complete ()
     "turn on auto-complete"
     (interactive)
@@ -1281,4 +1305,81 @@ then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
 (venv-initialize-eshell) ;; if you want eshell support
 (setq venv-location "~/.virtualenvs")
 
+#+END_SRC
+
+
+* Smartparens
+
+#+BEGIN_SRC emacs-lisp :eval no :tangle no
+  (require 'smartparens-config)
+  ;(add-hook 'cider-repl-mode-hook 'smartparens-strict-mode)
+  ;(add-hook 'emacs-lisp-mode-hook 'smartparens-strict-mode)
+
+  (mapc (lambda (m) (add-hook m 'smartparens-strict-mode))
+        '(emacs-lisp-mode-hook cider-repl-mode-hook clojure-mode-hook)) 
+  (smartparens-global-mode t)
+  (show-smartparens-global-mode t)
+
+
+
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+  (define-key sp-keymap (kbd "C-M-f") 'sp-forward-sexp)
+  (define-key sp-keymap (kbd "C-M-b") 'sp-backward-sexp)
+
+  (define-key sp-keymap (kbd "C-M-d") 'sp-down-sexp)
+  (define-key sp-keymap (kbd "C-M-a") 'sp-backward-down-sexp)
+  (define-key sp-keymap (kbd "C-S-a") 'sp-beginning-of-sexp)
+  (define-key sp-keymap (kbd "C-S-d") 'sp-end-of-sexp)
+
+  (define-key sp-keymap (kbd "C-M-e") 'sp-up-sexp)
+  (define-key emacs-lisp-mode-map (kbd ")") 'sp-up-sexp)
+  (define-key sp-keymap (kbd "C-M-u") 'sp-backward-up-sexp)
+  (define-key sp-keymap (kbd "C-M-t") 'sp-transpose-sexp)
+
+  (define-key sp-keymap (kbd "C-M-n") 'sp-next-sexp)
+  (define-key sp-keymap (kbd "C-M-p") 'sp-previous-sexp)
+
+  (define-key sp-keymap (kbd "C-M-k") 'sp-kill-sexp)
+  (define-key sp-keymap (kbd "C-M-w") 'sp-copy-sexp)
+
+  (define-key sp-keymap (kbd "M-<delete>") 'sp-unwrap-sexp)
+  (define-key sp-keymap (kbd "M-<backspace>") 'sp-backward-unwrap-sexp)
+
+  (define-key sp-keymap (kbd "C-<right>") 'sp-forward-slurp-sexp)
+  (define-key sp-keymap (kbd "C-<left>") 'sp-forward-barf-sexp)
+  (define-key sp-keymap (kbd "C-M-<left>") 'sp-backward-slurp-sexp)
+  (define-key sp-keymap (kbd "C-M-<right>") 'sp-backward-barf-sexp)
+
+  (define-key sp-keymap (kbd "M-D") 'sp-splice-sexp)
+  (define-key sp-keymap (kbd "C-M-<delete>") 'sp-splice-sexp-killing-forward)
+  (define-key sp-keymap (kbd "C-M-<backspace>") 'sp-splice-sexp-killing-backward)
+  (define-key sp-keymap (kbd "C-S-<backspace>") 'sp-splice-sexp-killing-around)
+
+  (define-key sp-keymap (kbd "C-]") 'sp-select-next-thing-exchange)
+  (define-key sp-keymap (kbd "C-<left_bracket>") 'sp-select-previous-thing)
+  (define-key sp-keymap (kbd "C-M-]") 'sp-select-next-thing)
+
+  (define-key sp-keymap (kbd "M-F") 'sp-forward-symbol)
+  (define-key sp-keymap (kbd "M-B") 'sp-backward-symbol)
+
+
+#+END_SRC
+
+
+* Mac path stuff
+
+#+BEGIN_SRC emacs-lisp
+(when (memq window-system '(mac ns))
+  (exec-path-from-shell-initialize))
+(setq load-path (remove "~/.emacs.d/" load-path))
+#+END_SRC
+
+
+* Ledger
+
+#+BEGIN_SRC emacs-lisp
+ (add-to-list 'auto-mode-alist '("\\.lgr\\'" . ledger-mode))
+ (add-hook 'ledger-mode-hook 'yas/minor-mode-off)
 #+END_SRC

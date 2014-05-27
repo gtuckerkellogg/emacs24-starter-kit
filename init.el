@@ -26,12 +26,12 @@
                   (file-directory-p (expand-file-name "lisp"
                                                       (getenv "ORG_HOME"))))
        '(require 'org))
-    ;; load up the starter kit
+    ;; load up the starter kit 
     (org-babel-load-file (expand-file-name "starter-kit.org" starter-kit-dir))))
+
 
 (run-hooks 'after-init-hook)
 (message "after init hook is %s" after-init-hook)
-(message "starter kit dir is %s" starter-kit-dir)
 (message "this is the init file ending" )
 
 ;;; init.el ends here
