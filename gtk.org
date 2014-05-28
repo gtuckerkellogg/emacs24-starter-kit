@@ -88,8 +88,8 @@ install them. Other dependencies are provided by Emacs 24.
                            dired+ js2-mode typopunct rainbow-delimiters popwin
                            ess r-autoyas gist expand-region multiple-cursors
                            virtualenvwrapper smartparens git-gutter ac-cider-compliment)))
-    (unless (package-installed-p package)
-      (package-install package)))
+    (unless (package-installed-p 'package)
+      (package-install 'package)))
 #+end_src
 
 ** Load the desired starter kit packages before my remaining customization
