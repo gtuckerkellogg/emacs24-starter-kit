@@ -86,7 +86,7 @@ install them. Other dependencies are provided by Emacs 24.
 #+begin_src emacs-lisp
   (dolist (package '(cider flycheck kibit-mode ac-nrepl autoinsert visual-regexp
                            dired+ js2-mode typopunct rainbow-delimiters popwin
-                           ess r-autoyas gist expand-region multiple-cursors ox-reveal
+                           ess r-autoyas gist expand-region multiple-cursors 
                            virtualenvwrapper smartparens git-gutter ac-cider-compliment))
     (unless (package-installed-p package)
       (package-install package)))
@@ -856,7 +856,7 @@ The variable org-file
      (dot . t)
      (ruby . t)
      (python . t)  ;; requires return statement
-     (sh . t)
+     (shell . t)
      (perl . t)
      (ledger . t)
      (latex . t)
@@ -1168,7 +1168,6 @@ all events are correctly placed in the agenda.
 * Other exporters
 
 #+BEGIN_SRC emacs-lisp
-(require 'ox-reveal)
 (require 'ox-md)
 #+END_SRC
 
