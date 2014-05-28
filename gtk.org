@@ -87,7 +87,7 @@ install them. Other dependencies are provided by Emacs 24.
   (dolist (package '(cider flycheck kibit-mode ac-nrepl autoinsert visual-regexp
                            dired+ js2-mode typopunct rainbow-delimiters popwin
                            ess r-autoyas gist expand-region multiple-cursors
-                           virtualenvwrapper smartparens git-gutter))
+                           virtualenvwrapper smartparens git-gutter ac-cider-compliment)))
     (unless (package-installed-p package)
       (package-install package)))
 #+end_src
