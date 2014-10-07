@@ -59,6 +59,14 @@ These are almost trivial functions, but I find them useful
   
   (defun turn-off-cua-mode ()
     (cua-mode -1))
+
+(defun switch-to-minibuffer-window ()
+  "switch to minibuffer window (if active)"
+  (interactive)
+  (when (active-minibuffer-window)
+    (select-window (active-minibuffer-window))))
+(global-set-key (kbd "<f7>") 'switch-to-minibuffer-window)
+
 #+END_SRC
 
 
@@ -84,10 +92,10 @@ These are almost trivial functions, but I find them useful
 Determine whether required packages are installed. If not, use ELPA to
 install them. Other dependencies are provided by Emacs 24.
 #+begin_src emacs-lisp
-  (dolist (package '(cider flycheck kibit-mode ac-nrepl autoinsert visual-regexp
+  (dolist (package '(cider flycheck kibit-mode autoinsert visual-regexp
                            dired+ js2-mode typopunct rainbow-delimiters popwin
                            ess r-autoyas gist expand-region multiple-cursors ox-reveal
-                           virtualenvwrapper smartparens git-gutter ac-cider-compliment))
+                           virtualenvwrapper smartparens))
     (unless (package-installed-p package)
       (package-install package)))
 #+end_src
@@ -131,14 +139,15 @@ updated version of htmlize.el to fontify the exported code
 #+end_src
 
 #+begin_src emacs-lisp
-      (require 'cider)
-      (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
-      (setq cider-repl-print-length 100)
-      (setq nrepl-hide-special-buffers t)
-      (setq cider-prompt-save-file-on-load nil)
-      (setq cider-repl-result-prefix ";; => ")
-    (setq cider-repl-popup-stacktraces t)
-    (setq cider-auto-select-error-buffer t)
+  (require 'cider)
+  (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)  
+  (setq cider-repl-print-length 100)
+  (setq nrepl-hide-special-buffers t)
+  (setq cider-prompt-save-file-on-load nil)
+  (setq cider-repl-result-prefix ";; => ")
+  (setq cider-repl-popup-stacktraces t)
+  (setq cider-auto-select-error-buffer t)
+  ;; (global-company-mode)
 
   (require 'flycheck)
   (eval-after-load 'flycheck '(setq flycheck-checkers (delq 'emacs-lisp-checkdoc flycheck-checkers)))
@@ -150,25 +159,8 @@ updated version of htmlize.el to fontify the exported code
   (add-hook 'clojure-mode-hook 'turn-on-paredit :append)
   (add-hook 'emacs-lisp-mode-hook 'turn-on-paredit :append)
   (add-hook 'lisp-mode-hook 'turn-on-paredit :append)
-        (define-key kibit-mode-keymap (kbd "C-c C-n") nil)
-        (add-hook 'after-init-hook #'global-flycheck-mode)
-
-    ;; ;; this is some stuff I will remove just for the time being
-    ;; for autocompletion, i've been using ac-nrepl
-    ;;    (require 'ac-nrepl)
-    ;;    (add-hook 'cider-repl-mode-hook 'ac-nrepl-setup)
-    ;;    (add-hook 'cider-mode-hook 'ac-nrepl-setup)
-    ;;    (eval-after-load "auto-complete"
-    ;;                   '(add-to-list 'ac-modes 'cider-repl-mode))
-
-    ;;; let's try compliment
-
-    (require 'ac-cider-compliment)
-    (add-hook 'cider-mode-hook 'ac-flyspell-workaround)
-    (add-hook 'cider-mode-hook 'ac-cider-compliment-setup)
-    (add-hook 'cider-repl-mode-hook 'ac-cider-compliment-repl-setup)
-    (eval-after-load "auto-complete"
-      '(add-to-list 'ac-modes cider-mode))
+  (define-key kibit-mode-keymap (kbd "C-c C-n") nil)
+  (add-hook 'after-init-hook #'global-flycheck-mode)
 
 #+end_src
 
@@ -198,12 +190,26 @@ updated version of htmlize.el to fontify the exported code
 
 
 
+
+** archives
+
+#+BEGIN_SRC emacs-lisp
+    (setq package-archives
+          '(("melpa-stable"       . "http://melpa-stable.milkbox.net/packages/")
+            ("melpa"       . "http://melpa.milkbox.net/packages/")
+;;            ("gnu"         . "http://elpa.gnu.org/packages/")
+            ("original"    . "http://tromey.com/elpa/")
+            ("org"         . "http://orgmode.org/elpa/")
+           ' ("marmalade"   . "http://marmalade-repo.org/packages/")
+))
+    (package-initialize)
+
+#+END_SRC
 * LaTeX
 
 #+begin_src emacs-lisp
   (setq-default TeX-master t)
   (setq TeX-PDF-mode t)
-  (add-hook 'LaTeX-mode-hook 'flyspell-mode)
 
   (defun gtk/flyspell-check-next-error ()
     (interactive)
@@ -268,7 +274,9 @@ updated version of htmlize.el to fontify the exported code
 * Spelling
 
 #+begin_src emacs-lisp
-  (add-hook 'LaTeX-mode-hook 'flyspell-mode)
+  ;;(add-hook 'LaTeX-mode-hook 'flyspell-mode)
+
+    
   
   (defun gtk/flyspell-check-next-error ()
     (interactive)
@@ -634,6 +642,7 @@ really for pdflatex, not xelatex and lualatex.
   (setq org-latex-default-packages-alist
         '(("" "fixltx2e" nil)
           ("" "longtable" nil)
+          ("" "floatrow" nil)
           ("" "graphicx" t)
           ("" "wrapfig" nil)
           ("" "soul" t)
@@ -1088,7 +1097,7 @@ I've been playing with making Slidy slides from org.
 
 #+begin_src emacs-lisp
  ;;(set-face-attribute 'default nil  :family "Anonymous Pro" :height 220 :weight 'bold)
- (set-face-attribute 'default nil  :family "Consolas" :height 220 :weight 'normal)
+ ;; (set-face-attribute 'default nil  :family "Consolas" :height 220 :weight 'normal)
 ;; (set-face-attribute 'default nil  :family "Inconsolata" :height 220 :weight 'bold)
    
   ;; (set-face-attribute 'font-lock-comment-face nil 
@@ -1144,8 +1153,8 @@ all events are correctly placed in the agenda.
 
 #+begin_src emacs-lisp
 (require 'gist)
-(require 'git-gutter)
-(global-git-gutter-mode +1)
+;; (require 'git-gutter)
+;;(global-git-gutter-mode -1)
 #+end_src
 
 
@@ -1312,8 +1321,6 @@ then from emacs running ~M-x slime-connect~ to ~localhost~ and ~4005~
 
 #+BEGIN_SRC emacs-lisp :eval no :tangle no
   (require 'smartparens-config)
-  ;(add-hook 'cider-repl-mode-hook 'smartparens-strict-mode)
-  ;(add-hook 'emacs-lisp-mode-hook 'smartparens-strict-mode)
 
   (mapc (lambda (m) (add-hook m 'smartparens-strict-mode))
         '(emacs-lisp-mode-hook cider-repl-mode-hook clojure-mode-hook)) 
