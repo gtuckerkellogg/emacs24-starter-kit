@@ -197,12 +197,13 @@ updated version of htmlize.el to fontify the exported code
     (setq package-archives
           '(("melpa-stable"       . "http://melpa-stable.milkbox.net/packages/")
             ("melpa"       . "http://melpa.milkbox.net/packages/")
-;;            ("gnu"         . "http://elpa.gnu.org/packages/")
+            ("gnu"         . "http://elpa.gnu.org/packages/")
             ("original"    . "http://tromey.com/elpa/")
             ("org"         . "http://orgmode.org/elpa/")
            ' ("marmalade"   . "http://marmalade-repo.org/packages/")
 ))
     (package-initialize)
+(set 'package-check-signature nil)
 
 #+END_SRC
 * LaTeX
@@ -258,6 +259,8 @@ updated version of htmlize.el to fontify the exported code
   (require 'dired+)
   (setq dired-omit-files
        (concat dired-omit-files "\\|^\\..+$"))
+  (dolist (ext '("pyg" "fls" "fdb_latexmk"))
+    (add-to-list 'dired-omit-extensions  (concat "." ext)))
   (add-hook 'dired-mode-hook 'dired-omit-mode)
 #+end_src
 
@@ -786,13 +789,31 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
     (when (eq backend 'beamer)
       (replace-regexp-in-string "\\`\\\\[A-Za-z0-9]+" "\\\\textbf" contents)))
 
-  (defun my-beamer-caption (contents backend info)
+  (defun my-org-beamer-caption (contents backend info)
+    "Org export filter to allow use of #+CAPTION: keywords in
+     beamer org export, by removing floats using the \\captionof*
+     macro. Requires use of the caption package "
     (when (eq backend 'beamer)
-      (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)))
+      (replace-regexp-in-string
+       "\\\\caption\{" "\\\\captionof*{figure}{"
+       (replace-regexp-in-string
+        "\\\\end\{figure\}"   "%"
+        (replace-regexp-in-string "\\\\begin\{figure\}" "%" contents)))))
+
+  (defun my-latex-ref-to-cref (contents backend info)
+    "Org export filter to allow use cref
+     in latex org export. Require use of cleveref"
+    (when (eq backend 'latex)
+      (replace-regexp-in-string
+       "\\\\ref\{" "\\\\cref{"
+       contents)))
 
 
 
-  (add-to-list 'org-export-filter-final-output-functions 'my-beamer-caption)
+  (add-to-list 'org-export-filter-final-output-functions 'my-org-beamer-caption)
+
+  (add-to-list 'org-export-filter-final-output-functions 'my-latex-ref-to-cref)
+
   (add-to-list 'org-export-filter-bold-functions 'my-beamer-bold)
     
   (setq org-export-allow-bind-keywords 't)
@@ -1088,7 +1109,8 @@ I've been playing with making Slidy slides from org.
   (require 'ess-site)
   (require 'r-autoyas)
   (add-hook 'ess-mode-hook 'r-autoyas-ess-activate)
-  (add-hook 'ess-mode-hook 'turn-on-auto-complete)
+  ;;(add-hook 'ess-mode-hook 'turn-on-auto-complete)
+  (ess-toggle-underscore nil)
 #+end_src
 
 
