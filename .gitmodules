@@ -10,10 +10,6 @@
 	path = src/emacs-chrome
 	url = https://github.com/stsquad/emacs_chrome.git
 
-[submodule "org"]
-	path = org
-	url = git://orgmode.org/org-mode.git
-
 [submodule "src/nxhtml"]
 	path = src/nxhtml
 	url = https://github.com/emacsmirror/nxhtml.git
