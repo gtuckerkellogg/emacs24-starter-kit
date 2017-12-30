@@ -7,10 +7,6 @@ This is part of the [[file:starter-kit.org][Emacs Starter Kit]].
 
 Key Bindings.
 
-** You know, like Readline.
-#+begin_src emacs-lisp 
-(global-set-key (kbd "C-M-h") 'backward-kill-word)
-#+end_src
 
 ** Align your code in a pretty way.
 #+begin_src emacs-lisp 
@@ -24,7 +20,7 @@ Key Bindings.
 
 ** Turn on the menu bar for exploring new modes
 #+begin_src emacs-lisp 
-(global-set-key [f1] 'menu-bar-mode)
+  (global-set-key (kbd "S-<f1>") (lambda () (interactive) (menu-bar-mode 1)))
 #+end_src
 
 ** Font size

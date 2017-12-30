@@ -77,15 +77,18 @@ evaluated a theme is activated using the =load-theme= function.
 ** ido mode
 ido-mode is like magic pixie dust!
 #+srcname: starter-kit-loves-ido-mode
-#+begin_src emacs-lisp 
+#+begin_src emacs-lisp  :eval false
 (when (> emacs-major-version 21)
-  (ido-mode t)
+  (ido-mode nil)
   (setq ido-enable-prefix nil
         ido-enable-flex-matching t
         ido-create-new-buffer 'always
-        ido-use-filename-at-point t
+        ido-use-filename-at-point nil
         ido-max-prospects 10))
 #+end_src
+
+#+RESULTS:
+: 10
 
 ** Other, spell checking, tabs, imenu and a coding hook
 #+begin_src emacs-lisp 
@@ -117,31 +120,7 @@ ido-mode is like magic pixie dust!
                     nil))))))
 #+end_src
 
-*** possible issues/resolutions with flyspell
-Most of the solution came from [[http://www.emacswiki.org/emacs/FlySpell][EmacsWiki-FlySpell]].  Here is one
-possible fix.
 
-**** Emacs set path to aspell
-it's possible aspell isn't in your path
-
-#+begin_src emacs-lisp :tangle yes
-   (setq exec-path (append exec-path '("/opt/local/bin")))
-#+end_src
-
-**** Emacs specify spelling program
-- This didn't work at first, possibly because cocoAspell was
-  building its dictionary.  Now it seems to work fine.
-#+begin_src emacs-lisp :tangle yes :results silent
-  (setq ispell-program-name "aspell"
-        ispell-dictionary "english"
-        ispell-dictionary-alist
-        (let ((default '("[A-Za-z]" "[^A-Za-z]" "[']" nil
-                         ("-B" "-d" "english" "--dict-dir"
-                          "/opt/local/share/aspell")
-                         nil iso-8859-1)))
-          `((nil ,@default)
-            ("english" ,@default))))
-#+end_src
 
 ** Hippie expand: at times perhaps too hip
 #+begin_src emacs-lisp
@@ -171,9 +150,5 @@ let them live in the =backups/= directory inside of the starter kit.
      (set-face-foreground 'diff-added "green4")
      (set-face-foreground 'diff-removed "red3")))
 
-(eval-after-load 'magit
-  '(progn
-     (set-face-foreground 'magit-diff-add "green3")
-     (set-face-foreground 'magit-diff-del "red3")))
 #+end_src
 

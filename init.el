@@ -8,6 +8,15 @@
 ;; load Org-mode from source when the ORG_HOME environment variable is
 ;;set
 
+
+;; Added by Package.el.  This must come before configurations of
+;; installed packages.  Don't delete this line.  If you don't want it,
+;; just comment it out by adding a semicolon to the start of the line.
+;; You may delete these explanatory comments.
+(package-initialize)
+
+(setq load-path (delq "/usr/share/emacs/site-lisp/dictionaries-common" load-path))
+
 ;;; Code:
 (when (getenv "ORG_HOME")
   (let ((org-lisp-dir (expand-file-name "lisp" (getenv "ORG_HOME"))))
@@ -26,12 +35,25 @@
                   (file-directory-p (expand-file-name "lisp"
                                                       (getenv "ORG_HOME"))))
        '(require 'org))
-    ;; load up the starter kit 
+    ;; load up the starter kit
     (org-babel-load-file (expand-file-name "starter-kit.org" starter-kit-dir))))
 
+  (defun expand-directory-name (d)
+    (expand-file-name (concat d "/")))
+
 (run-hooks 'after-init-hook)
-(message "after init hook is %s" after-init-hook)
-(message "this is the init file ending" )
+
+(symbol-plist 'narrow-to-region)
+
+(put 'narrow-to-region 'disabled nil)
+(put 'set-goal-column 'disabled nil)
 
 ;;; init.el ends here
-(put 'narrow-to-region 'disabled nil)
+
+
+
+
+
+
+
+

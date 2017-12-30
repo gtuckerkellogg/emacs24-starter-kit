@@ -262,9 +262,11 @@ interested in the actual code implementing the starter kit.
     (setq package-archives
           '(("gnu"         . "http://elpa.gnu.org/packages/")
             ("original"    . "http://tromey.com/elpa/")
+            ("melpa-stable" . "http://melpa-stable.milkbox.net/packages/")
             ("org"         . "http://orgmode.org/elpa/")
             ("marmalade"   . "http://marmalade-repo.org/packages/")
-            ("melpa"       . "http://melpa.milkbox.net/packages/")))
+;;            ("melpa"       . "http://melpa.milkbox.net/packages/")
+            ))
     (package-initialize)
     
     (defvar starter-kit-packages
@@ -278,6 +280,8 @@ interested in the actual code implementing the starter kit.
         (package-install package)))
     
   #+end_src
+
+  #+RESULTS:
 
 - Functions for loading other parts of the starter kit
   #+name: starter-kit-load
