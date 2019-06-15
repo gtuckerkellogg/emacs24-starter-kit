@@ -1,5 +1,6 @@
 #+TITLE: Emacs Starter Kit
 #+OPTIONS: toc:2 num:nil ^:nil
+#+PROPERTY: header-args :tangle yes
 
 #+begin_quote
   Emacs outshines all other editing software in approximately the same
@@ -12,6 +13,7 @@
 * Introduction
   :PROPERTIES:
   :CUSTOM_ID: introduction
+  :header-args: :tangle no
   :END:
 This should provide a saner set of defaults than you get normally with
 Emacs. It's intended for beginners, but provides a good elisp
@@ -87,7 +89,6 @@ mentioned in [[customizations]] immediately below.
 ** Customization
    :PROPERTIES:
    :CUSTOM_ID: customization
-   :tangle:   no
    :END:
 
 The defaults built into the starter kit are only the beginning of
@@ -145,7 +146,7 @@ general starter-kit updates without conflict.
      =starter-kit-python.org= either by directly copying the sections
      that look useful into your personal config, or simply by loading
      the entire file directly with the following.
-     #+begin_src emacs-lisp
+     #+begin_src emacs-lisp 
        (starter-kit-load "python")
      #+end_src
 
@@ -228,6 +229,7 @@ The latest version is at http://github.com/eschulte/emacs24-starter-kit/
 * Implementation
   :PROPERTIES:
   :CUSTOM_ID: implementation
+  :header-args: :tangle yes
   :END:
 
 This section contains all code implementing the Emacs Starter Kit.  It
@@ -258,27 +260,26 @@ interested in the actual code implementing the starter kit.
   #+end_src
 
 - ELPA archive repositories and two packages to install by default.
+
   #+begin_src emacs-lisp
     (setq package-archives
-          '(("gnu"         . "http://elpa.gnu.org/packages/")
-            ("original"    . "http://tromey.com/elpa/")
-            ("melpa-stable" . "http://melpa-stable.milkbox.net/packages/")
-            ("org"         . "http://orgmode.org/elpa/")
-            ("marmalade"   . "http://marmalade-repo.org/packages/")
-;;            ("melpa"       . "http://melpa.milkbox.net/packages/")
-            ))
+  	'(("melpa-stable" . "https://stable.melpa.org/packages/")
+            ("melpa" . "https://melpa.org/packages/")
+            ("gnu"         . "http://elpa.gnu.org/packages/")
+            ("org"         . "http://orgmode.org/elpa/")))
+
     (package-initialize)
-    
+
     (defvar starter-kit-packages
       (list 'yasnippet)
       "Libraries that should be installed by default.")
-    
+
     (unless package-archive-contents
       (package-refresh-contents))
     (dolist (package starter-kit-packages)
       (unless (package-installed-p package)
         (package-install package)))
-    
+
   #+end_src
 
   #+RESULTS:
@@ -394,17 +395,17 @@ everyone using the starter kit.
   The latest version of yasnippets doesn't play well with Org-mode, the
   following function allows these two to play nicely together.
   #+begin_src emacs-lisp
-    (defun yas/org-very-safe-expand ()
-      (let ((yas/fallback-behavior 'return-nil)) (yas/expand)))
-    
-    (defun yas/org-setup ()
-      ;; yasnippet (using the new org-cycle hooks)
-      (make-variable-buffer-local 'yas/trigger-key)
-      (setq yas/trigger-key [tab])
-      (add-to-list 'org-tab-first-hook 'yas/org-very-safe-expand)
-      (define-key yas/keymap [tab] 'yas/next-field))
-    
-    (add-hook 'org-mode-hook #'yas/org-setup)
+  ;;  (defun yas/org-very-safe-expand ()
+;;      (let ((yas/fallback-behavior 'return-nil)) (yas/expand)))
+
+    ;; (defun yas/org-setup ()
+    ;;   ;; yasnippet (using the new org-cycle hooks)
+    ;;   (make-variable-buffer-local 'yas/trigger-key)
+    ;;   (setq yas/trigger-key [tab])
+    ;;   (add-to-list 'org-tab-first-hook 'yas/org-very-safe-expand)
+    ;;   (define-key yas/keymap [tab] 'yas/next-field))
+
+    ;; (add-hook 'org-mode-hook #'yas/org-setup) ;
   #+end_src
 
 ** Load User/System Specific Files

@@ -1,4 +1,6 @@
 #+TITLE:     Greg Tucker-Kellogg's Emacs configuration
+#+PROPERTY
+
 
 * Front matter                                                :ignoreheading:
 #+AUTHOR:    Greg Tucker-Kellogg
@@ -24,21 +26,28 @@
           (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
 #+END_SRC
 
+
+
 * General information
 
 #+name: me
 #+BEGIN_SRC emacs-lisp
   (setq user-full-name "Greg Tucker-Kellogg"
         user-mail-address "dbsgtk@gmail.com")
-  (require 'cl)
   (require 'use-package)
+  (require 'cl)
 
 #+END_SRC
 
-#+RESULTS: me
-: use-package
 
 * General configuration
+
+** emacs client
+
+#+BEGIN_SRC emacs-lisp
+  (setenv "EDITOR" "emacsclient")
+  (server-start)
+#+END_SRC
 
 ** Enable minibuffer completion
 
@@ -49,9 +58,6 @@
   (setq auto-window-vscroll nil)
   (define-key emacs-lisp-mode-map (kbd "C-c C-c") 'eval-defun)
 #+end_src
-
-#+RESULTS:
-: eval-defun
 
 ** French spacing
 I'm trying to wean myself off the old school double spacing for
@@ -76,6 +82,14 @@ sentence ending.  Also in LaTeX.
 
 
 
+
+** ignored extensions
+
+#+BEGIN_SRC emacs-lisp
+
+  (add-to-list 'completion-ignored-extensions ".los")
+
+#+END_SRC
 * Some functions
 
 These are almost trivial functions, but I find them useful
@@ -96,6 +110,8 @@ These are almost trivial functions, but I find them useful
   (when (active-minibuffer-window)
     (select-window (active-minibuffer-window))))
 (global-set-key (kbd "<f7>") 'switch-to-minibuffer-window)
+
+
 
 #+END_SRC
 
@@ -121,9 +137,6 @@ These are almost trivial functions, but I find them useful
     "Where I will keep some extra personal elisp stuff")
 #+end_src
 
-#+RESULTS:
-: my-elisp-dir
-
 ** Check Dependencies
 
 Determine whether required packages are installed. If not, use ELPA to
@@ -131,13 +144,17 @@ install them. Other dependencies are provided by Emacs 24.
 
 #+BEGIN_SRC emacs-lisp 
   (setq package-archives
-        '(("melpa-stable" . "http://melpa-stable.milkbox.net/packages/")
-          ("melpa"       . "http://melpa.milkbox.net/packages/")
-          ("gnu"         . "http://elpa.gnu.org/packages/")))
+        '(("org" . "https://orgmode.org/elpa/")
+          ("melpa-stable" . "https://stable.melpa.org/packages/")
+          ("melpa" . "https://melpa.org/packages/")
+          ("gnu" . "http://elpa.gnu.org/packages/")
+          ))
   (package-initialize)
   (setq package-check-signature nil)
 
 #+END_SRC
+
+#+RESULTS:
 
 
 #+begin_src emacs-lisp
@@ -164,15 +181,12 @@ install them. Other dependencies are provided by Emacs 24.
   (setq debug-on-error t)
 #+end_src
 
-** Popwin!
+** Popwin and bookmarks
 
 #+BEGIN_SRC emacs-lisp
   (use-package popwin
     :config (progn
             (popwin-mode 1)))
-#+END_SRC
-
-#+begin_src emacs-lisp
   (use-package bm
     :ensure t
     :bind* (("C-c =" . bm-toggle)
@@ -201,7 +215,7 @@ updated version of htmlize.el to fontify the exported code
 #+begin_src emacs-lisp
 
   (use-package cider
-    :pin melpa-stable
+    :pin melpa
     :init
     (add-hook 'clojure-mode-hook #'cider-mode)
     (autoload 'cider--make-result-overlay "cider-overlays")
@@ -236,17 +250,16 @@ updated version of htmlize.el to fontify the exported code
           cider-repl-popup-stacktraces t
           cider-auto-select-error-buffer t)
 
-    :bind (("C-c i" . cider-inspect-last-result)))
+    :bind (:map cider-mode-map ("C-c i" . cider-inspect-last-result)))
 
-    ;;(use-package kibit-mode
-    ;;    :bind ("C-c C-n" . nil))
 
-    (use-package flycheck
-      :config
-      (setq flycheck-checkers (delq 'emacs-lisp-checkdoc flycheck-checkers))
-      (add-hook 'clojure-mode-hook 'flycheck-mode)
-      (add-hook 'after-init-hook #'global-flycheck-mode))
+  (use-package flycheck
+    :pin melpa-stable
+    :init (global-flycheck-mode))
 #+end_src
+
+#+RESULTS:
+: t
 
 
 
@@ -257,6 +270,8 @@ updated version of htmlize.el to fontify the exported code
     :ensure    projectile
     :config    (projectile-global-mode t)
     :diminish   projectile-mode)
+
+(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 
 ;(persp-mode)
 ;(require 'persp-projectile)
@@ -287,90 +302,106 @@ updated version of htmlize.el to fontify the exported code
 ** Lualatex
 
 #+BEGIN_SRC emacs-lisp :eval yes
-  (use-package lua-mode
-    :ensure t
-    :mode (("\\.lua\\'" . lua-mode)))
+      (use-package lua-mode
+        :ensure t
+        :mode (("\\.lua\\'" . lua-mode))
+        :bind (:map lua-mode-map
+                    ("C-c C-n" . (lambda ()
+                                   (interactive)
+                                   (lua-send-current-line)
+                                   (forward-line)))
+                    ("C-c C-r" . lua-send-region)
+
+  ))
 #+END_SRC
 
 #+RESULTS:
 
 ** handle text mode and markdown 
 
-#+BEGIN_SRC emacs-lisp :eval yes
+#+BEGIN_SRC emacs-lisp :eval yes tangle :yes
 
-          (use-package markdown-mode
-                :ensure t
-                :commands (markdown-mode gfm-mode)
-                :mode (("README\\.md\\'" . gfm-mode)
-                       ("\\.md\\'" . markdown-mode)
-                       ("\\.markdown\\'" . markdown-mode))
-                :init
-                (setq markdown-command "pandoc")
-                :bind ("C-c C-r" . reftex-citation))
+      (defvar markdown-cite-format)
+      (setq markdown-cite-format
+            '(
+              (?\C-m . "[@%l]")
+              (?p . "[@%l]")
+              (?t . "@%l")
+              ))
 
-
-
-    (add-hook 'markdown-mode-hook 'turn-off-auto-fill)
-
-     (defun my-buffer-face-mode-variable ()
-       "Set font to a variable width (proportional) fonts in current buffer"
-       (interactive)
-       (setq buffer-face-mode-face '(:family "Bitstream Charter"))
-       (buffer-face-mode))
-
-     (defun my-buffer-face-mode-fixed ()
-       "Sets a fixed width (monospace) font in current buffer"
-       (interactive)
-       (setq buffer-face-mode-face '(:family "Anonymous Pro"))
-       (buffer-face-mode))
-
-    ;; use a variable font for markdown mode
-
-     (add-hook 'markdown-mode-hook 'my-buffer-face-mode-variable)
-
-     ;; Control + scroll to change font type
-     (global-set-key [C-mouse-4] 'my-buffer-face-mode-fixed)
-     (global-set-key [C-mouse-5] 'my-buffer-face-mode-variable)
-
-     (global-set-key [C-M-prior] 'my-buffer-face-mode-fixed)
-     (global-set-key [C-M-next] 'my-buffer-face-mode-variable)
-
-     ;; Shift + scroll to change font size
-     (global-set-key [S-mouse-4] 'text-scale-increase)
-     (global-set-key [S-mouse-5] 'text-scale-decrease)
+      (defun markdown-reftex-citation ()
+        (interactive)
+        (let ((reftex-cite-format markdown-cite-format)
+              (reftex-cite-key-separator "; @"))
+          (reftex-citation)))
 
 
-          (use-package pandoc-mode
-            :hook markdown-mode
-            :config 'pandoc-load-default-settings)
+      (use-package markdown-mode
+        :ensure t
+        :commands (markdown-mode gfm-mode)
+        :mode (("README\\.md\\'" . gfm-mode)
+               ("\\.md\\'" . markdown-mode)
+               ("\\.markdown\\'" . markdown-mode))
+        :init
+        (setq markdown-command "pandoc")
+        :bind (:map markdown-mode-map ("C-c C-r" . markdown-reftex-citation)))
+
+      (add-hook 'markdown-mode-hook 'flyspell-mode)
+      (add-hook 'markdown-mode-hook 'turn-off-auto-fill)
+    (add-hook 'markdown-mode-hook 'orgtbl-mode)
+      (defun my-buffer-face-mode-variable ()
+        "Set font to a variable width (proportional) fonts in current buffer"
+        (interactive)
+        ;;      (setq buffer-face-mode-face '(:family "Bitstream Charter"))
+        (setq buffer-face-mode-face '(:family "Open Sans"))
+        (buffer-face-mode))
+
+      (defun my-buffer-face-mode-fixed ()
+        "Sets a fixed width (monospace) font in current buffer"
+        (interactive)
+        (setq buffer-face-mode-face '(:family "Anonymous Pro"))
+        (buffer-face-mode))
+
+      ;; use a variable font for markdown mode
+
+      (add-hook 'markdown-mode-hook 'my-buffer-face-mode-variable)
+
+      ;; Control + scroll to change font type
+      (global-set-key [C-mouse-4] 'my-buffer-face-mode-fixed)
+      (global-set-key [C-mouse-5] 'my-buffer-face-mode-variable)
+
+      (global-set-key [C-M-prior] 'my-buffer-face-mode-fixed)
+      (global-set-key [C-M-next] 'my-buffer-face-mode-variable)
+
+      ;; Shift + scroll to change font size
+      (global-set-key [S-mouse-4] 'text-scale-increase)
+      (global-set-key [S-mouse-5] 'text-scale-decrease)
 
 
-          ;;(add-hook 'pandoc-mode-hook 'pandoc-load-default-settings)
-
-          (use-package visual-line-mode
-            :hook markdown-mode)
-
-  (use-package reftex-mode
-     :hook markdown-mode)
+      (use-package pandoc-mode
+        :hook markdown-mode
+        :config 'pandoc-load-default-settings)
 
 
-        (use-package visual-fill-column-mode
-            :hook markdown-mode)
+      (use-package visual-line-mode
+        :hook markdown-mode)
 
-            (add-hook 'text-mode-hook 'turn-on-auto-fill)
+      (use-package reftex-mode
+        :hook (LaTeX-mode markdown-mode))
 
-            (use-package autoinsert
-              :config
-                (setq auto-insert-directory (gtk/emacs-subdir "insert")))
 
-          ;(add-hook 'markdown-mode-hook 'pandoc-mode)
+      (add-hook 'text-mode-hook 'turn-on-auto-fill)
+
+      (use-package autoinsert
+        :config
+        (setq auto-insert-directory (gtk/emacs-subdir "insert")))
+
+                                              ;(add-hook 'markdown-mode-hook 'pandoc-mode)
 
 
 
 #+END_SRC
 
-#+RESULTS:
-: t
 
 ** Make dired remove some junk in default view with dired-x
 
@@ -407,7 +438,7 @@ updated version of htmlize.el to fontify the exported code
 
 * Spelling
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :eval yes :tangle yes
   (use-package flyspell
     :init
     (bind-key "S-<f8>" 'flyspell-mode)
@@ -425,16 +456,17 @@ updated version of htmlize.el to fontify the exported code
                  '("en_MED" "/usr/share/hunspell/en_MED.dic"))
     (add-to-list 'ispell-hunspell-dict-paths-alist
                  '("en_med_glut" "/usr/share/hunspell/en_med_glut.dic"))
-    (setq ispell-dictionary "en_GB,en_med_glut")
+    (setq ispell-dictionary "en_GB,en_MED")
     (ispell-set-spellchecker-params)
+    (ispell-hunspell-add-multi-dic "en_GB,en_MED")
     (ispell-hunspell-add-multi-dic "en_GB,en_med_glut")
-    (ispell-hunspell-add-multi-dic "en_US,en_med_glut"))
-
-
-
+    (ispell-hunspell-add-multi-dic "en_US,en_MED"))
 
 
 #+end_src
+
+#+RESULTS:
+: t
 
 * Key bindings
 
@@ -452,12 +484,17 @@ I have some keys that I'd like to be always bound
     
     (global-set-key (kbd "C-c q") 'auto-fill-mode)
 
+    (global-set-key (kbd "M-+") 'count-words)
+
   (use-package magit
     :config
     (bind-key "C-c m" 'magit-status))
 
     
 #+END_SRC
+
+#+RESULTS: gtk-keys
+: t
 
 * Org mode 
 
@@ -487,6 +524,7 @@ Org miscellany
   (setq org-outline-path-complete-in-steps nil)
 #+end_src
 
+
 *** Getting smart quotes
 
 #+begin_src emacs-lisp
@@ -498,6 +536,7 @@ Org miscellany
     (defun typopunct-on ()  (interactive) (typopunct-mode t))
     (add-hook 'org-mode-hook 'typopunct-on))
 #+end_src
+
 
 
 ** Org Modules
@@ -678,22 +717,43 @@ But project tags should never be inherited
 #+end_src
   
 
+
 ** Yasnippet
+
 
 This is yasnippet behavior, cribbed from emacswiki.  
 
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :eval yes :tangle yes
+
+     (require 'yasnippet)
+
+    (yas-global-mode 1)
+
+    (defun yas/minor-mode-off ()
+      (interactive)
+      (yas/minor-mode -1))
+
+    (defun yas/minor-mode-on ()
+      (interactive)
+      (yas/minor-mode 1))
 
 
-          (yas-global-mode 1)
-          (defun yas/minor-mode-off ()
-            (interactive)
-            (yas/minor-mode -1))
+    ;; (add-hook 'org-mode-hook
+    ;;           (lambda ()
+    ;;             (setq-local yas/trigger-key [tab])
+    ;;             (define-key yas/keymap [tab] 'yas/next-field-or-maybe-expand)))
 
-          (defun yas/minor-mode-on ()
-            (interactive)
-            (yas/minor-mode 1))
+    (defun yas/org-very-safe-expand ()
+       (let ((yas/fallback-behavior 'return-nil)) (yas/expand)))
+
+  (add-hook 'org-mode-hook
+              (lambda ()
+                (make-variable-buffer-local 'yas/trigger-key)
+                (setq yas/trigger-key [tab])
+                (add-to-list 'org-tab-first-hook 'yas/org-very-safe-expand)
+                (define-key yas/keymap [tab] 'yas/next-field)))
+
     (setq help-mode-hook nil)
 
     (use-package rainbow-delimiters
@@ -702,17 +762,15 @@ This is yasnippet behavior, cribbed from emacswiki.
       (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
 
 
-        ;;  (add-hook 'help-mode-hook 'yas/minor-mode-off)
-        
-        (add-to-list 'yas-snippet-dirs "~/.emacs.d/snippets/gits")
-        (add-to-list 'yas-snippet-dirs "~/.emacs.d/snippets/mine")
-      ;;  (yas-load-directory "~/.emacs.d/snippets/mine/latex-mode")
-      ;;  (yas-load-directory "~/.emacs.d/snippets/gits/latex-mode")
-      ;  (yas/load-directory "~/.emacs.d/snippets/gits/latex-mode/")
-          
-      
-      
-          
+          ;;  (add-hook 'help-mode-hook 'yas/minor-mode-off)
+
+    (add-to-list 'yas-snippet-dirs "~/.emacs.d/snippets/gits")
+    (add-to-list 'yas-snippet-dirs "~/.emacs.d/snippets/mine")
+
+
+
+
+
 #+end_src
 
 
@@ -731,26 +789,27 @@ package.  It would be nice to use pygmentize instead of htmlize on
 the back end of org-mode HTML export.  As it is I have a default
 configuration string for minted that gets put in all my org LaTeX exports
    
-#+begin_src emacs-lisp :tangle yes :eval yes
+#+begin_src emacs-lisp :tangle yes :eval yes :results silent
   (require 'ox-latex)
   (setq org-latex-listings 'minted)
   (setq org-latex-minted-options
-        '(("linenos" "false") 
-          ("bgcolor" "gray!10")  ;; this is dependent on the color being defined
+        '(("linenos" "true")
+          ("fontsize" "\\small")
+          ("bgcolor" "gray!30")  ;; this is dependent on the color being defined
           ("stepnumber" "1")
           ("numbersep" "10pt")
-          )
-        )
+          ))
   (setq my-org-minted-config (concat "%% minted package configuration settings\n"
-                                     "\\usepackage{minted}\n"
-                                     "\\definecolor{bg}{rgb}{0.97,0.97,0.97}\n" 
+                                     "\\usepackage[cache=false]{minted}\n"
+                                     "\\definecolor{bg}{HTML}{E5E5E5}\n" 
                                      "\\usemintedstyle{trac}\n"
                                      "\\usepackage{upquote}\n"
+                                     "\\renewcommand{\\theFancyVerbLine}{\\sffamily\\tiny \\textcolor[rgb]{1.0,0,0}{\\arabic{FancyVerbLine}}}\n"
                                      "\\AtBeginDocument{%\n"
                                      "\\def\\PYZsq{\\textquotesingle}%\n"
                                      "}\n"
                                       ))
-  
+
 #+end_src
 
 I need R source code highlighting, but *minted* only knows "r"
@@ -811,8 +870,8 @@ really for pdflatex, not xelatex and lualatex.
           ("" "soul" t)
           ("" "csquotes" t)
           ("" "marvosym" t)
-          ("" "wasysym" t)
-          ("" "latexsym" t)
+;;          ("" "wasysym" t)
+;;          ("" "latexsym" t)
           ("" "tabularx" nil)
           ("" "booktabs" nil)
           ("" "xcolor" nil)
@@ -820,6 +879,9 @@ really for pdflatex, not xelatex and lualatex.
           )
         )
 #+end_src
+
+#+RESULTS: auto-tex-packages
+| ( fixltx2e nil) | ( longtable nil) | ( graphicx t) | ( wrapfig nil) | ( soul t) | ( csquotes t) | ( marvosym t) | ( tabularx nil) | ( booktabs nil) | ( xcolor nil) | \tolerance=1000 |
 
 *** My export packages
 
@@ -843,7 +905,7 @@ and load ~hyperref~ after them, along with my ~minted~ code listing options.
                              ("" "xunicode" t)
                               ("" "varioref"  nil)
                               ("" "hyperref"  nil)
-                              ("capitalize,noabbrev" "cleveref"  nil)
+;;                              ("capitalize,noabbrev" "cleveref"  nil)
                              ,my-org-minted-config ))
                ("lualatex" . (("" "url" t)
                            ("" "fontspec" t)
@@ -1056,7 +1118,6 @@ The variable org-file
      (dot . t)
      (ruby . t)
      (python . t)  ;; requires return statement
-     (sh . t)
      (perl . t)
      (ledger . t)
      (latex . t)
@@ -1245,11 +1306,6 @@ WordPress
 
 ** Slides
 
-I've been playing with making Slidy slides from org.
-#+begin_src emacs-lisp
-;;   (require 'org-htmlslidy)
-#+END_SRC
-
 
 
 
@@ -1272,49 +1328,61 @@ I've been playing with making Slidy slides from org.
 
 
 
+* Ivy, not ido or helm
+
+#+BEGIN_SRC emacs-lisp
+  (require 'ivy)
+  (ivy-mode 1)
+  ;(require 'counsel)
+  ;(counsel-mode 0)
+#+END_SRC
 * R
 
 #+name: R and ess
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :eval yes :tangle yes
 
-  (use-package ess-site
-    :defer nil
-    :mode ("\\.R\\'" . R-mode)
-    :init
-    (progn 
-      (setq-default ess-language "R")
-      (require 'r-autoyas)
-      (add-hook 'ess-mode-hook 'r-autoyas-ess-activate)
-      ;(add-hook 'inferior-ess-mode-hook 'turn-off-auto-complete 'append)
-      ;(delq 'turn-off-auto-complete inferior-ess-mode-hook)
-      ;(add-hook 'ess-mode-hook 'turn-off-auto-complete 'append)
-      (add-to-list 'ess-style-alist
-                   '(my-style
-                     (ess-indent-level . 4)
-                     (ess-first-continued-statement-offset . 2)
-                     (ess-continued-statement-offset . 0)
-                     (ess-brace-offset . -4)
-                     (ess-expression-offset . 4)
-                     (ess-else-offset . 0)
-                     (ess-close-brace-offset . 0)
-                     (ess-brace-imaginary-offset . 0)
-                     (ess-continued-brace-offset . 0)
-                     (ess-arg-function-offset . 4)
-                     (ess-arg-function-offset-new-line . '(4))
-                     ))
-      (setq ess-default-style 'my-style)
-      (setq ess-smart-S-assign-key ";")
-      (ess-toggle-S-assign nil)
-      (ess-toggle-S-assign nil)
-      (ess-toggle-underscore nil)))
+  (require 'ess-r-mode)
+       (use-package ess-site
+         :demand t
+         :mode ("\\.R\\'" . R-mode)
+         :init
+         (progn 
+           (setq-default ess-language "R")
+           ;(require 'r-autoyas)
+           (add-to-list 'ess-style-alist
+                        '(my-style
+                          (ess-indent-level . 4)
+                          (ess-first-continued-statement-offset . 2)
+                          (ess-continued-statement-offset . 0)
+                          (ess-brace-offset . -4)
+                          (ess-expression-offset . 4)
+                          (ess-else-offset . 0)
+                          (ess-close-brace-offset . 0)
+                          (ess-brace-imaginary-offset . 0)
+                          (ess-continued-brace-offset . 0)
+                          (ess-arg-function-offset . 4)
+                          (ess-arg-function-offset-new-line . '(4))
+                          ))
+           ;(setq ess-default-style 'RRR)
+  ;         (setq ess-smart-S-assign-key ";")
+  ;         (ess-toggle-S-assign nil)
+  ;         (ess-toggle-S-assign nil)
+           (ess-toggle-underscore nil)))
 
+    ;; (use-package poly-markdown
+    ;;   :ensure t
+    ;;   :pin melpa-stable)
 
- (use-package polymode 
-      :ensure t
-      :mode
-      ("\\.Snw" . poly-noweb+r-mode)
-      ("\\.Rnw" . poly-noweb+r-mode)
-      ("\\.Rmd" . poly-markdown+r-mode))
+    ;; (use-package poly-R
+    ;;   :ensure t
+    ;;   :pin melpa-stable)
+
+       ;; (use-package polymode 
+       ;;      :ensure t
+       ;;      :mode
+       ;;      ("\\.Snw" . poly-noweb+r-mode)
+       ;;      ("\\.Rnw" . poly-noweb+r-mode)
+       ;;      ("\\.Rmd" . poly-markdown+r-mode))
 #+end_src
 
 
@@ -1375,19 +1443,6 @@ all events are correctly placed in the agenda.
 
 * Essh
 
-#+BEGIN_SRC emacs-lisp
-  (use-package essh
-    :config
-    (bind-keys :map sh-mode-map
-               ("C-c C-r" . pipe-region-to-shell)        
-               ("C-c C-b" . pipe-buffer-to-shell)        
-               ("C-c C-j" . pipe-line-to-shell)          
-               ("C-c C-n" . pipe-line-to-shell-and-step) 
-               ("C-c C-f" . pipe-function-to-shell)      
-               ("C-c C-d" . shell-cd-current-directory)))
-#+END_SRC
-
-
 * Other exporters
 
 #+BEGIN_SRC emacs-lisp
@@ -1416,12 +1471,12 @@ org-mode.
         (python-shell-send-string region)
         (next-line))))
 
-  (elpy-use-ipython)
-  (setq python-shell-interpreter "ipython3" python-shell-interpreter-args "--simple-prompt --pprint")
+  (setq python-shell-interpreter "python"
+        python-shell-interpreter-args "")
   (bind-keys :map elpy-mode-map
              ("C-c C-n" . gtk/elpy-send-line-or-region)
              ("C-c n" . elpy-flymake-next-error))
-             
+
 
   (add-to-list 'python-shell-completion-native-disabled-interpreters "python3")
   (global-hl-line-mode t)
@@ -1440,27 +1495,21 @@ org-mode.
 #+BEGIN_SRC emacs-lisp :eval yes
   (use-package company
     :config
-    (add-hook 'after-init-hook 'global-company-mode)
-    (defvar company-mode/enable-yas t
-      "Enable yasnippet for all backends.")
-    (defun company-mode/backend-with-yas (backend)
-    (if (or (not company-mode/enable-yas) (and (listp backend) (member 'company-yasnippet backend)))
-        backend
-      (append (if (consp backend) backend (list backend))
-              '(:with company-yasnippet))))
-    (setq company-backends (mapcar #'company-mode/backend-with-yas company-backends)))
+    (setq company-idle-delay 0 )
+    (add-hook 'after-init-hook 'global-company-mode))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp :eval no :tangle no
-          
-        ;(require 'auto-complete-config)
-        ;(setq ac-source-yasnippet nil)
-        ;(ac-config-default)
-        ;(global-auto-complete-mode -1)
 
 
+  (use-package auto-complete
+    :ensure t
+    :init
+    (require 'auto-complete-config)
+    (setq ac-delay 0.3)
+    (ac-config-default)
+    (global-auto-complete-mode 1))
 
-    
   (define-key ac-completing-map (kbd "C-n") 'ac-next)
   (define-key ac-completing-map (kbd "C-p") 'ac-previous)
   (define-key ac-completing-map "\r" 'ac-complete)
@@ -1485,7 +1534,7 @@ org-mode.
     (add-to-list 'ac-sources 'ac-source-yasnippet))
 
   (add-hook 'org-mode-hook 'turn-on-auto-complete)            
-            
+
 #+END_SRC
 
 
@@ -1524,6 +1573,16 @@ org-mode.
 
 
 * Draft
+
+#+BEGIN_SRC emacs-lisp :eval yes :tangle yes
+  (use-package yaml-mode
+    :init
+    (add-hook 'yaml-mode-hook #'turn-off-auto-fill))
+
+(require 'flycheck-vale)
+(flycheck-vale-setup)
+#+END_SRC
+
 
 #+BEGIN_SRC emacs-lisp
   (setq org-file-apps
