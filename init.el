@@ -18,13 +18,9 @@
        '(require 'org))
     (org-babel-load-file (expand-file-name "starter-kit.org" starter-kit-dir))))
 
-  (defun expand-directory-name (d)
-    (expand-file-name (concat d "/")))
-
 (run-hooks 'after-init-hook)
-
-(symbol-plist 'narrow-to-region)
-
+(message "reloading Org %s" org-version)
+(org-reload)
 (put 'narrow-to-region 'disabled nil)
 (put 'set-goal-column 'disabled nil)
 
@@ -37,3 +33,4 @@
 
 
 
+(put 'dired-find-alternate-file 'disabled nil)

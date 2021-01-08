@@ -35,7 +35,7 @@
   (setq user-full-name "Greg Tucker-Kellogg"
         user-mail-address "dbsgtk@gmail.com")
   (require 'use-package)
-  (require 'cl)
+  (require 'cl-lib)
 
 #+END_SRC
 
@@ -95,21 +95,19 @@ sentence ending.  Also in LaTeX.
 These are almost trivial functions, but I find them useful
 
 #+BEGIN_SRC emacs-lisp
-  (defun expand-directory-name (d)
-    (expand-file-name (concat d "/")))
-  
-  (defun  gtk/emacs-subdir (d)
-    (expand-directory-name (concat user-emacs-directory d )))
-  
-  (defun turn-off-cua-mode ()
-    (cua-mode -1))
 
-(defun switch-to-minibuffer-window ()
-  "switch to minibuffer window (if active)"
-  (interactive)
-  (when (active-minibuffer-window)
-    (select-window (active-minibuffer-window))))
-(global-set-key (kbd "<f7>") 'switch-to-minibuffer-window)
+    (defun  gtk/emacs-subdir (d)
+      (expand-file-name d user-emacs-directory))
+
+    (defun turn-off-cua-mode ()
+      (cua-mode -1))
+
+  (defun switch-to-minibuffer-window ()
+    "switch to minibuffer window (if active)"
+    (interactive)
+    (when (active-minibuffer-window)
+      (select-window (active-minibuffer-window))))
+  (global-set-key (kbd "<f7>") 'switch-to-minibuffer-window)
 
 
 
@@ -125,16 +123,17 @@ These are almost trivial functions, but I find them useful
 
 #name: other-lisp
 #+begin_src emacs-lisp
-(set-default 'tramp-default-proxies-alist (quote ((".*" "\\`root\\'" "/ssh:%h:"))))
-  (defvar dropbox-root  
-   (convert-standard-filename "~/Dropbox/")
-    "This is where Dropbox should be mounted on all of my systems")
+  (set-default 'tramp-default-proxies-alist (quote ((".*" "\\`root\\'" "/ssh:%h:"))))
+    (defvar dropbox-root  
+      (convert-standard-filename "~/Dropbox/")
+
+      "This is where Dropbox should be mounted on all of my systems")
     
-  (setq user-emacs-directory (convert-standard-filename "~/.emacs.d/"))
+    (setq user-emacs-directory (convert-standard-filename "~/.emacs.d/"))
     
-  (defvar my-elisp-dir (convert-standard-filename  
-                        (concat dropbox-root "emacs/lisp/"))   
-    "Where I will keep some extra personal elisp stuff")
+    (defvar my-elisp-dir (convert-standard-filename  
+                          (concat dropbox-root "emacs/lisp/"))   
+      "Where I will keep some extra personal elisp stuff")
 #+end_src
 
 ** Check Dependencies
@@ -147,7 +146,7 @@ install them. Other dependencies are provided by Emacs 24.
         '(("org" . "https://orgmode.org/elpa/")
           ("melpa-stable" . "https://stable.melpa.org/packages/")
           ("melpa" . "https://melpa.org/packages/")
-          ("gnu" . "http://elpa.gnu.org/packages/")
+          ("gnu" . "https://elpa.gnu.org/packages/")
           ))
   (package-initialize)
   (setq package-check-signature nil)
@@ -158,10 +157,10 @@ install them. Other dependencies are provided by Emacs 24.
 
 
 #+begin_src emacs-lisp
-  (dolist (package '(cider flycheck kibit-mode autoinsert visual-regexp
+  (dolist (package '(cider kibit-mode autoinsert visual-regexp
                            dired+ js2-mode typopunct rainbow-delimiters 
                            ess r-autoyas gist expand-region multiple-cursors 
-                           virtualenvwrapper smartparens))
+                           smartparens))
     (unless (package-installed-p package)
       (package-install package)))
 #+end_src
@@ -183,34 +182,18 @@ install them. Other dependencies are provided by Emacs 24.
 
 ** Popwin and bookmarks
 
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :tangle yes
   (use-package popwin
     :config (progn
             (popwin-mode 1)))
   (use-package bm
     :ensure t
-    :bind* (("C-c =" . bm-toggle)
-           ("C-c [" . bm-previous)
-           ("C-c ]" . bm-next)))
+    :bind* (("C-c b" . bm-toggle)
+            ("S-<f3>" . bm-previous)
+            ("<f3>" . bm-next)))
 #+end_src
 
 ** contrib
-
-I want to make sure the contrib directory is available, since I use an
-updated version of htmlize.el to fontify the exported code
-
-#+name contribs
-#+begin_src emacs-lisp
-(setq custom-theme-directory  (gtk/emacs-subdir "themes"))
-
-(defun disable-all-themes ()
-  "disable all active themes."
-  (dolist (i custom-enabled-themes)
-    (disable-theme i)))
-
-(defadvice load-theme (before disable-themes-first activate)
-  (disable-all-themes))
-#+end_src
 
 #+begin_src emacs-lisp
 
@@ -255,7 +238,18 @@ updated version of htmlize.el to fontify the exported code
 
   (use-package flycheck
     :pin melpa-stable
-    :init (global-flycheck-mode))
+    :ensure t
+    :init
+    (defun disable-flycheck-in-org-src-block ()
+      (setq-local flycheck-disabled-checkers '(emacs-lisp-checkdoc)))
+    (add-hook  'org-src-mode-hook 'disable-flycheck-in-org-src-block)
+    :config
+    (add-hook 'flycheck-mode-hook 'flycheck-popup-tip-mode)
+    (define-key flycheck-mode-map flycheck-keymap-prefix nil)
+    (setq flycheck-keymap-prefix (kbd "C-c f"))
+    (define-key flycheck-mode-map flycheck-keymap-prefix
+      flycheck-command-map)
+    (global-flycheck-mode))
 #+end_src
 
 #+RESULTS:
@@ -266,15 +260,17 @@ updated version of htmlize.el to fontify the exported code
 * Projectile
 
 #+BEGIN_SRC emacs-lisp
-  (use-package projectile
-    :ensure    projectile
-    :config    (projectile-global-mode t)
-    :diminish   projectile-mode)
+    (use-package projectile
+      :ensure    projectile
+      :config
+      (projectile-global-mode t)
+      (setq projectile-completion-system 'ivy)
+      :diminish   projectile-mode)
 
-(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 
-;(persp-mode)
-;(require 'persp-projectile)
+  ;(persp-mode)
+  ;(require 'persp-projectile)
 #+END_SRC
 
 * LaTeX
@@ -321,82 +317,109 @@ updated version of htmlize.el to fontify the exported code
 
 #+BEGIN_SRC emacs-lisp :eval yes tangle :yes
 
-      (defvar markdown-cite-format)
-      (setq markdown-cite-format
-            '(
-              (?\C-m . "[@%l]")
-              (?p . "[@%l]")
-              (?t . "@%l")
-              ))
+    (defvar markdown-cite-format)
+    (setq markdown-cite-format
+          '(
+            (?\C-m . "[@%l]")
+            (?p . "[@%l]")
+            (?t . "@%l")
+            ))
 
-      (defun markdown-reftex-citation ()
-        (interactive)
-        (let ((reftex-cite-format markdown-cite-format)
-              (reftex-cite-key-separator "; @"))
-          (reftex-citation)))
-
-
-      (use-package markdown-mode
-        :ensure t
-        :commands (markdown-mode gfm-mode)
-        :mode (("README\\.md\\'" . gfm-mode)
-               ("\\.md\\'" . markdown-mode)
-               ("\\.markdown\\'" . markdown-mode))
-        :init
-        (setq markdown-command "pandoc")
-        :bind (:map markdown-mode-map ("C-c C-r" . markdown-reftex-citation)))
-
-      (add-hook 'markdown-mode-hook 'flyspell-mode)
-      (add-hook 'markdown-mode-hook 'turn-off-auto-fill)
-    (add-hook 'markdown-mode-hook 'orgtbl-mode)
-      (defun my-buffer-face-mode-variable ()
-        "Set font to a variable width (proportional) fonts in current buffer"
-        (interactive)
-        ;;      (setq buffer-face-mode-face '(:family "Bitstream Charter"))
-        (setq buffer-face-mode-face '(:family "Open Sans"))
-        (buffer-face-mode))
-
-      (defun my-buffer-face-mode-fixed ()
-        "Sets a fixed width (monospace) font in current buffer"
-        (interactive)
-        (setq buffer-face-mode-face '(:family "Anonymous Pro"))
-        (buffer-face-mode))
-
-      ;; use a variable font for markdown mode
-
-      (add-hook 'markdown-mode-hook 'my-buffer-face-mode-variable)
-
-      ;; Control + scroll to change font type
-      (global-set-key [C-mouse-4] 'my-buffer-face-mode-fixed)
-      (global-set-key [C-mouse-5] 'my-buffer-face-mode-variable)
-
-      (global-set-key [C-M-prior] 'my-buffer-face-mode-fixed)
-      (global-set-key [C-M-next] 'my-buffer-face-mode-variable)
-
-      ;; Shift + scroll to change font size
-      (global-set-key [S-mouse-4] 'text-scale-increase)
-      (global-set-key [S-mouse-5] 'text-scale-decrease)
+    (defun markdown-reftex-citation ()
+      (interactive)
+      (let ((reftex-cite-format markdown-cite-format)
+            (reftex-cite-key-separator "; @"))
+        (reftex-citation)))
 
 
-      (use-package pandoc-mode
-        :hook markdown-mode
-        :config 'pandoc-load-default-settings)
+    (use-package markdown-mode
+      :ensure t
+      :commands (markdown-mode gfm-mode)
+      :mode (("README\\.md\\'" . gfm-mode)
+             ("\\.md\\'" . markdown-mode)
+             ("\\.markdown\\'" . markdown-mode))
+      :init
+      (setq markdown-command "pandoc")
+      :bind (:map markdown-mode-map ("C-c C-r" . markdown-reftex-citation)))
+
+  (add-hook 'markdown-mode-hook 'flyspell-mode)
+  (add-hook 'markdown-mode-hook 'turn-off-auto-fill)
+
+  (add-hook 'markdown-mode-hook 'orgtbl-mode)
+    (defun my-buffer-face-mode-variable ()
+      "Set font to a variable width (proportional) fonts in current buffer"
+      (interactive)
+      ;;      (setq buffer-face-mode-face '(:family "Bitstream Charter"))
+      (setq buffer-face-mode-face '(:family "Open Sans"))
+      (buffer-face-mode))
+
+    (defun my-buffer-face-mode-fixed ()
+      "Sets a fixed width (monospace) font in current buffer"
+      (interactive)
+      (setq buffer-face-mode-face '(:family "Anonymous Pro"))
+      (buffer-face-mode))
+
+    ;; use a variable font for markdown mode
+
+    (add-hook 'markdown-mode-hook 'my-buffer-face-mode-variable)
+
+    ;; Control + scroll to change font type
+    (global-set-key [C-mouse-4] 'my-buffer-face-mode-fixed)
+    (global-set-key [C-mouse-5] 'my-buffer-face-mode-variable)
+
+    (global-set-key [C-M-prior] 'my-buffer-face-mode-fixed)
+    (global-set-key [C-M-next] 'my-buffer-face-mode-variable)
+
+    ;; Shift + scroll to change font size
+    (global-set-key [S-mouse-4] 'text-scale-increase)
+  (global-set-key [S-mouse-5] 'text-scale-decrease)
+
+  (defun markdown-citation-at-point-p ()
+    "Return non-nill if in a citation at point."
+    (save-excursion
+      (thing-at-point-looking-at "@[-A-Za-z0-9]+")))
+
+  ;; (defun markdown-flyspell-check-word-p ()
+  ;;   "Return t if `flyspell' should check word just before point.
+  ;;     Used for `flyspell-generic-check-word-predicate'."
+  ;;   (save-excursion
+  ;;     (goto-char (1- (point)))
+  ;;     (not (or (markdown-code-block-at-point-p)
+  ;;              (markdown-inline-code-at-point-p)
+  ;;              (markdown-citation-at-point-p)
+  ;;              (markdown-in-comment-p)
+  ;;              (let ((faces (get-text-property (point) 'face)))
+  ;;                (if (listp faces)
+  ;;                    (or (memq 'markdown-reference-face faces)
+  ;;                        (memq 'markdown-markup-face faces)
+  ;;                        (memq 'markdown-url-face faces))
+  ;;                  (memq faces '(markdown-reference-face
+  ;;                                markdown-markup-face
+  ;;                                markdown-url-face))))))))
+
+  ;(add-hook 'markdown-mode-hook (lambda () (setq flyspell-generic-check-word-predicate 'markdown-flyspell-check-word-p)))
+  ;(put 'markdown-mode-hook 'flyspell-generic-check-word-predicate 'markdown-flyspell-check-word-p)
 
 
-      (use-package visual-line-mode
-        :hook markdown-mode)
-
-      (use-package reftex-mode
-        :hook (LaTeX-mode markdown-mode))
+    (use-package pandoc-mode
+      :hook markdown-mode
+      :config 'pandoc-load-default-settings)
 
 
-      (add-hook 'text-mode-hook 'turn-on-auto-fill)
+    (use-package visual-line-mode
+      :hook markdown-mode)
 
-      (use-package autoinsert
-        :config
-        (setq auto-insert-directory (gtk/emacs-subdir "insert")))
+    (use-package reftex-mode
+      :hook (LaTeX-mode markdown-mode))
 
-                                              ;(add-hook 'markdown-mode-hook 'pandoc-mode)
+
+    (add-hook 'text-mode-hook 'turn-on-auto-fill)
+
+    (use-package autoinsert
+      :config
+      (setq auto-insert-directory (gtk/emacs-subdir "insert")))
+
+                                            ;(add-hook 'markdown-mode-hook 'pandoc-mode)
 
 
 
@@ -452,14 +475,15 @@ updated version of htmlize.el to fontify the exported code
                ("M-S-<f8>" . flyspell-prog-mode))
     (setq ispell-extra-args nil)
     (setq ispell-program-name "hunspell")
-    (add-to-list 'ispell-hunspell-dict-paths-alist
+     (add-to-list 'ispell-hunspell-dict-paths-alist
                  '("en_MED" "/usr/share/hunspell/en_MED.dic"))
     (add-to-list 'ispell-hunspell-dict-paths-alist
                  '("en_med_glut" "/usr/share/hunspell/en_med_glut.dic"))
-    (setq ispell-dictionary "en_GB,en_MED")
+    (setq ispell-dictionary "en_GB")
     (ispell-set-spellchecker-params)
     (ispell-hunspell-add-multi-dic "en_GB,en_MED")
     (ispell-hunspell-add-multi-dic "en_GB,en_med_glut")
+    (ispell-hunspell-add-multi-dic "en_US,en_med_glut")
     (ispell-hunspell-add-multi-dic "en_US,en_MED"))
 
 
@@ -479,8 +503,7 @@ I have some keys that I'd like to be always bound
     (global-set-key "\C-c\C-m" 'execute-extended-command)
     
   ;  (global-set-key "\C-w" 'backward-kill-word)
-    (global-set-key "\C-x\C-k" 'kill-region)
-    (global-set-key "\C-c\C-k" 'copy-region-as-kill)
+    (global-set-key "\C-c\C-w" 'copy-region-as-kill)
     
     (global-set-key (kbd "C-c q") 'auto-fill-mode)
 
@@ -506,7 +529,8 @@ and writing takes place.
 Where the Org files go
 
 #+begin_src emacs-lisp   
-  (setq org-directory (expand-directory-name (concat dropbox-root "_support/org")))
+  (setq org-directory
+        (expand-file-name "_support/org" dropbox-root))
 #+end_src  
 
 
@@ -541,7 +565,9 @@ Org miscellany
 
 ** Org Modules
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle yes
+  (add-to-list 'org-modules 'org-sticky-header)
+  (add-hook 'org-mode-hook 'org-sticky-header-mode)
   (add-to-list 'org-modules 'ox-latex)
   (add-to-list 'org-modules 'ox-odt)
   (add-to-list 'org-modules 'org-agenda)
@@ -554,7 +580,7 @@ Org miscellany
 I want the habits display to be a little to the right. I'll use the
 Chinese character 今 for today, and a ☺ for completed habits
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle yes
   (setq  org-habit-completed-glyph 9786 
          org-habit-graph-column 80
          org-habit-show-habits-only-for-today t 
@@ -584,25 +610,85 @@ Chinese character 今 for today, and a ☺ for completed habits
 ** The agenda
 
 #+begin_src emacs-lisp
-  (setq org-agenda-files (expand-file-name (concat org-directory "/agenda-files"))) 
+  (setq org-agenda-files (expand-file-name "agenda-files" org-directory ))
+
 #+end_src
 
 I use the diary to bring stuff in from the MacOS iCal
 
 #+BEGIN_SRC emacs-lisp
-  (setq org-agenda-include-diary t) 
-  (setq diary-file (expand-file-name (concat dropbox-root "/diary"))) 
+  (setq org-agenda-include-diary nil) 
+  ;;;(setq diary-file (expand-file-name (concat dropbox-root "/diary"))) 
 #+end_src 
 
 
 #+name agenda-commands
 #+begin_src emacs-lisp :eval no 
+
   (setq org-agenda-custom-commands
-             '(("i" "Import diary from iCal" agenda ""
-                ((org-agenda-mode-hook
-                  (lambda ()
-                    (org-mac-iCal)))))))
+        '(("n" "Agenda and all TODOs"
+           ((agenda "")
+            (alltodo "")))
+          ("P" todo "PROJECT")
+          ))
+
+
+  (require 'calfw)
+  (require 'calfw-org)
+
+  (global-set-key (kbd "<f6>") 'cfw:open-org-calendar)
 #+end_src
+
+#+BEGIN_SRC emacs-lisp :tangle yes :eval yes
+
+        (use-package org-super-agenda
+         :init
+         (org-super-agenda-mode))
+
+        ;; (setq org-super-agenda-groups
+        ;;       '((:auto-category t)))
+
+        (setq org-super-agenda-groups
+              '(
+                (:name "Overdue items"
+                       :order 1
+                       :deadline past)
+                (:name "Lagging items"
+                       :order 2
+                       :scheduled past)
+                (:name "Today's items"
+                       :scheduled today
+                       :deadline today
+                       :order 3)
+                (:name "High priority"
+                       :priority "A"
+                       :order 4)
+                (:name "Easy wins"
+                       :effort< "0:30"
+                       :order 5)
+                (:name "Medium priority or coming up"
+                       :priority<= "B"
+                       :scheduled future
+                       :deadline future
+                       :order 5
+                       )
+
+                (:name "Other next actions"
+                       :todo ("NEXT")
+                       :order 10
+                       )
+                (:name "Unscheduled Projects"
+                       :todo ("PROJECT")
+                       :order 99)
+                (:name "Waiting for"
+                       :todo ("WAITING")
+                       :order 100)
+        ))
+
+        (setq  org-agenda-skip-scheduled-if-deadline-is-shown t)
+        (setq  org-agenda-skip-deadline-prewarning-if-scheduled t)
+#+END_SRC
+
 
 ** My GTD setup
 
@@ -611,14 +697,8 @@ I use the diary to bring stuff in from the MacOS iCal
 #+name: next-actions
 #+begin_src emacs-lisp
 
-  (defun GTD ()
-    "Go to my main GTD next action lists"
-    (interactive)
-    (find-file my/organizer))
-
-
   (setq org-todo-keywords
-             '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!/!)")
+             '((sequence "NEXT(n)" "TODO(t)" "PROJECT(p)" "|" "DONE(d@/!)")
                (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)")))
 
   (setq org-todo-state-tags-triggers
@@ -629,7 +709,7 @@ I use the diary to bring stuff in from the MacOS iCal
                 ("TODO" ("WAITING") ("CANCELLED") ("HOLD"))
                 ("NEXT" ("WAITING") ("CANCELLED") ("HOLD"))
                 ("DONE" ("WAITING") ("CANCELLED") ("HOLD")))))
-         
+
   (setq org-log-into-drawer "LOGBOOK")
 #+end_src
 
@@ -650,19 +730,19 @@ I use David Allen's "Areas of Focus" for general categories across org stuff
 My default tags should be context
 
 #+BEGIN_SRC emacs-lisp
-      (setq org-tag-persistent-alist
-            '((:startgroup . nil)
-              ("@Office" . ?o)
-              ("@Computer" . ?c)
-              ("@Internet" . ?i)
-              ("@Home" . ?h)
-              ("@Errands" . ?e)
-              (:endgroup . nil)
-              (:startgroup . nil)
-              ("Project" . ?p)
-              ("Agenda" . ?a)
-              (:endgroup . nil)
-              ("FLAGGED" . ?f)))
+  (setq org-tag-persistent-alist
+        '((:startgroup . nil)
+          ("@Office" . ?o)
+          ("@Computer" . ?c)
+          ("@Internet" . ?i)
+          ("@Home" . ?h)
+          ("@Errands" . ?e)
+          (:endgroup . nil)
+          (:startgroup . nil)
+          ("Project" . ?p)
+          ("Agenda" . ?a)
+          (:endgroup . nil)
+          ("FLAGGED" . ?f)))
 
 #+END_SRC
 
@@ -674,15 +754,14 @@ But project tags should never be inherited
 ** Key bindings in Org
 
 #+begin_src emacs-lisp
-  (global-set-key (kbd "<f9>") 'GTD)
   (global-set-key (kbd "<f10>") 'org-cycle-agenda-files)
   (define-key org-mode-map (kbd "C-c )") 'reftex-citation)
-  (define-key org-mode-map (kbd "C-c C-k") 'copy-region-as-kill)
   (define-key org-mode-map "\C-cl" 'org-store-link)
   (define-key org-mode-map "\C-ci" 'org-insert-link)
-  (global-set-key "\C-ca" 'org-agenda)
+  (global-set-key (kbd  "C-c a") 'org-agenda)
   (global-set-key "\C-cj" 'org-clock-goto)
   (global-set-key "\C-cc" 'org-capture)
+  (setq org-clock-into-drawer "CLOCKING")
   (global-set-key "\C-c'" 'org-cycle-agenda-files)
   (define-key global-map "\C-cx"
     (lambda () (interactive) (org-capture nil "i")))
@@ -691,27 +770,58 @@ But project tags should never be inherited
 
 ** Org capture behavior
 
-#+begin_src emacs-lisp
-  (setq org-capture-templates
-        '(("t" "Todo items" entry (file+headline my/organizer "Unfiled Tasks")
-           "* TODO %?\n  %i\n  %a")
-          ("i" "Into the inbox" entry (file+datetree my/inbox)
-           "* %?\n\nEntered on %U\n  %i\n  %a" )
-          ("j" "Journal entries" entry (file+datetree my/journal)
-           "* %?\n\nEntered on %U\n  %i\n  %a" )
-          ("J" "Journal entries from nowhere" entry (file+datetree my/journal)
-           "* %?\n\nEntered on %U\n  %i\n " )
-          ))
+#+begin_src emacs-lisp :tangle yes
+
+  (use-package org-journal
+    :ensure t
+    :defer nil
+    :custom
+    (org-journal-dir (expand-file-name (concat org-directory "journal")))
+    (org-journal-date-format "%A, %d %B %Y")
+    :init
+    (setq org-journal-file-type 'monthly)
+    :bind (("C-c M-j" . org-journal-new-entry)))
+
+
+    (defun org-journal-find-location ()
+      ;; Open today's journal, but specify a non-nil prefix argument in order to
+      ;; inhibit inserting the heading; org-capture will insert the heading.
+      (org-journal-new-entry t)
+      ;; Position point on the journal's top-level heading so that org-capture
+      ;; will add the new entry as a child entry.
+      (goto-char (point-min)))
+
+      (setq org-capture-templates
+            `(
+              ("t" "Todo items" entry (file+headline my/organizer "Tasks")
+               "* TODO %?\n  %i")
+              ("T" "Todo items (with link)" entry (file+headline my/organizer "Tasks")
+               "* TODO %?\n  %i\n  %a")
+              ("i" "Into the inbox" entry (file+datetree my/inbox)
+               "* %?\n\nEntered on %U\n  %i" )
+              ("j" "Journal entry" entry (function org-journal-find-location)
+               "* %(format-time-string org-journal-time-format)%^{Title}\n%i%?")
+              ("R" "Weekly review"  entry (file+headline my/organizer  "Weekly Review")
+               (file ,(expand-file-name (concat org-directory "templates/weekly-review.org")))
+               )
+              ;; ("j" "Journal entries" entry (file+datetree my/journal)
+              ;;  "* %?\n\nEntered on %U\n  %i\n  %a" )
+              ;; ("J" "Journal entries from nowhere" entry (file+datetree my/journal)
+              ;;  "* %?\n\nEntered on %U\n  %i\n" )
+               ))
 #+end_src 
+
+#+RESULTS:
+| t | Todo items | entry | (file+headline my/organizer Tasks) | * TODO %? |
  
  
 ** Archiving and refiling
 
 #+begin_src emacs-lisp
-  (setq org-refile-use-outline-path t
-        org-refile-use-cache t)
-       
-  (setq org-refile-targets '((my/organizer :maxlevel . 2 )
+  (setq org-refile-use-outline-path 'file
+        org-refile-use-cache nil)
+
+  (setq org-refile-targets '((my/organizer :maxlevel . 1 )
                              (my/organizer :tag . "TAG" )
                              ))
 #+end_src
@@ -794,19 +904,20 @@ configuration string for minted that gets put in all my org LaTeX exports
   (setq org-latex-listings 'minted)
   (setq org-latex-minted-options
         '(("linenos" "true")
-          ("fontsize" "\\small")
+          ("fontsize" "\\footnotesize")
           ("bgcolor" "gray!30")  ;; this is dependent on the color being defined
           ("stepnumber" "1")
           ("numbersep" "10pt")
           ))
   (setq my-org-minted-config (concat "%% minted package configuration settings\n"
                                      "\\usepackage[cache=false]{minted}\n"
+                                     "\\usepackage{csquotes}\n"
                                      "\\definecolor{bg}{HTML}{E5E5E5}\n" 
                                      "\\usemintedstyle{trac}\n"
                                      "\\usepackage{upquote}\n"
                                      "\\renewcommand{\\theFancyVerbLine}{\\sffamily\\tiny \\textcolor[rgb]{1.0,0,0}{\\arabic{FancyVerbLine}}}\n"
                                      "\\AtBeginDocument{%\n"
-                                     "\\def\\PYZsq{\\textquotesingle}%\n"
+                                     "%\\def\\PYZsq{\\textquotesingle}%\n"
                                      "}\n"
                                       ))
 
@@ -822,34 +933,15 @@ TODO
 
 *** Different LaTeX engines
 
-I want the option of running the three major LaTeX flavors
-(pdflatex, xelatex, or lualatex) and have them all work.  LuaLaTeX is
-my preferred default.
-
-#+begin_src emacs-lisp
-  (defun my-org-tex-cmd ()
-    "set the correct type of LaTeX process to run for the org buffer"
-    (let ((case-fold-search t))
-      (if (string-match  "^#\\+LATEX_CMD:\s+\\(\\w+\\)"   
-                         (buffer-substring-no-properties (point-min) (point-max)))
-          (downcase (match-string 1 (buffer-substring-no-properties (point-min) (point-max))))
-        "lualatex"
-      ))
-    )
-#+end_src
-
 I use ~latexmk~ to generate the PDF, depending on the engine
 
 #+begin_src emacs-lisp :eval yes :tangle yes
-   (setq org-latex-hyperref-template nil)
-    (defun set-org-latex-pdf-process (backend)
-      "When exporting from .org with latex, automatically run latex,
-       pdflatex, or xelatex as appropriate, using latexmk."
-      (setq org-latex-pdf-process
-            (list (concat "latexmk -pdflatex='" 
-                          (my-org-tex-cmd)
-                          " -shell-escape -interaction nonstopmode' -pdf -f  %f" ))))
-    (add-hook 'org-export-before-parsing-hook 'set-org-latex-pdf-process)
+  (setq org-latex-hyperref-template nil)
+
+  (setq org-latex-pdf-process
+        '("latexmk -pdflatex='%latex -shell-escape -interaction nonstopmode' -outdir=%o -pdf -f  %f"))
+
+
 #+end_src
 
 *** Default packages 
@@ -860,28 +952,27 @@ The Org source warns against changing the value of
 really for pdflatex, not xelatex and lualatex.
 
 #+name: auto-tex-packages 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle yes
+
+(setq org-latex-prefer-user-labels t)
   (setq org-latex-default-packages-alist
-        '(("" "fixltx2e" nil)
-          ("" "longtable" nil)
-;          ("" "floatrow" nil)
-          ("" "graphicx" t)
-          ("" "wrapfig" nil)
-          ("" "soul" t)
-          ("" "csquotes" t)
-          ("" "marvosym" t)
-;;          ("" "wasysym" t)
-;;          ("" "latexsym" t)
-          ("" "tabularx" nil)
-          ("" "booktabs" nil)
-          ("" "xcolor" nil)
-          "\\tolerance=1000"
-          )
-        )
+        '(("AUTO" "inputenc" t ("pdflatex"))
+          ("T1" "fontenc" t ("pdflatex"))
+          ("no-math" "fontspec" t ("lualatex" "xelatex"))
+         (#1="" "graphicx" t)
+         (#1# "grffile" t)
+         (#1# "longtable" nil)
+         (#1# "wrapfig" nil)
+         (#1# "rotating" nil)
+         ("normalem" "ulem" t)
+         ;; (#1# "amsmath" t)
+         ;; (#1# "amssymb" t)
+         ("" "xcolor" nil)
+         ("" "booktabs" nil)
+         (#1# "capt-of" nil)
+         (#1# "hyperref" nil)))
 #+end_src
 
-#+RESULTS: auto-tex-packages
-| ( fixltx2e nil) | ( longtable nil) | ( graphicx t) | ( wrapfig nil) | ( soul t) | ( csquotes t) | ( marvosym t) | ( tabularx nil) | ( booktabs nil) | ( xcolor nil) | \tolerance=1000 |
 
 *** My export packages
 
@@ -889,167 +980,213 @@ I move the ~fontenc~/~fontspec~ package to engine-specific choices,
 and load ~hyperref~ after them, along with my ~minted~ code listing options.
 
 #+begin_src emacs-lisp
-    (defun my-auto-tex-packages (backend)
-      "Automatically set packages to include for different LaTeX engines"
-      (let ((my-org-export-latex-packages-alist 
-             `(("pdflatex" . (("AUTO" "inputenc" t)
-                              ("T1" "fontenc" t)
-                              ("" "textcomp" t)
-                              ("" "varioref"  nil)
-  ;                            ("hidelinks" "hyperref"  nil)
-  ;                            ("capitalize,noabbrev" "cleveref"  nil)
-                              ,my-org-minted-config))
-               ("xelatex" . (("" "url" t)
-                             ("no-math" "fontspec" t)
-                             ("" "xltxtra" t)
-                             ("" "xunicode" t)
-                              ("" "varioref"  nil)
-                              ("" "hyperref"  nil)
-;;                              ("capitalize,noabbrev" "cleveref"  nil)
-                             ,my-org-minted-config ))
-               ("lualatex" . (("" "url" t)
-                           ("" "fontspec" t)
-                              ("" "varioref"  nil)
-                              ("hidelinks" "hyperref"  nil)
-                              ("capitalize,noabbrev" "cleveref"  nil)
-                           ,my-org-minted-config ))
-               ))
-            (which-tex (my-org-tex-cmd)))
-        (if (car (assoc which-tex my-org-export-latex-packages-alist))
-            (setq org-latex-packages-alist 
-                  (cdr (assoc which-tex my-org-export-latex-packages-alist)))
-          (warn "no packages")
-          )
-        )
-      )
-    (add-hook 'org-export-before-parsing-hook 'my-auto-tex-packages 'append)
-    
-    (unless (boundp 'org-export-latex-classes)
-      (setq org-export-latex-classes nil))
-    
+  (setq org-latex-packages-alist
+        '(("" "varioref" nil)
+          "%% minted package configuration settings
+  \\usepackage[cache=false]{minted}
+  \\usepackage{csquotes}
+  \\definecolor{bg}{HTML}{E5E5E5}
+  \\usemintedstyle{trac}
+  \\usepackage{upquote}
+  \\renewcommand{\\theFancyVerbLine}{\\sffamily\\tiny \\textcolor[rgb]{1.0,0,0}{\\arabic{FancyVerbLine}}}
+  \\AtBeginDocument{%
+  \\def\\PYZsq{\\textquotesingle}%
+  }
+  "))
+
+
+  ;; (defun my-auto-tex-packages (backend)
+  ;;       "Automatically set packages to include for different LaTeX engines"
+  ;;       (let ((my-org-export-latex-packages-alist 
+  ;;              `(("pdflatex" . (("AUTO" "inputenc" t)
+  ;;                               ("T1" "fontenc" t)
+  ;;                               ("" "textcomp" t)
+  ;;                               ("" "varioref"  nil)
+  ;;   ;                            ("hidelinks" "hyperref"  nil)
+  ;;   ;                            ("capitalize,noabbrev" "cleveref"  nil)
+  ;;                               ,my-org-minted-config))
+  ;;                ("xelatex" . (("" "url" t)
+  ;;                              ("no-math" "fontspec" t)
+  ;;                              ("" "xltxtra" t)
+  ;;                              ("" "xunicode" t)
+  ;;                               ("" "varioref"  nil)
+  ;;                               ("" "hyperref"  nil)
+  ;; ;;                              ("capitalize,noabbrev" "cleveref"  nil)
+  ;;                              ,my-org-minted-config ))
+  ;;                ("lualatex" . (("" "url" t)
+  ;;                            ("" "fontspec" t)
+  ;;                               ("" "varioref"  nil)
+  ;;                               ("hidelinks" "hyperref"  nil)
+  ;;                               ("capitalize,noabbrev" "cleveref"  nil)
+  ;;                            ,my-org-minted-config ))
+  ;;                ))
+  ;;             (which-tex org-latex-compiler))
+  ;;         (if (car (assoc which-tex my-org-export-latex-packages-alist))
+  ;;             (setq org-latex-packages-alist 
+  ;;                   (cdr (assoc which-tex my-org-export-latex-packages-alist)))
+  ;;           (warn "no packages")
+  ;;           )
+  ;;         )
+  ;;       )
+  ;;     (add-hook 'org-export-before-parsing-hook 'my-auto-tex-packages 'append)
+
+  ;;     (unless (boundp 'org-export-latex-classes)
+  ;;       (setq org-export-latex-classes nil))
+
 #+end_src
 
 #+RESULTS:
 
-*** LaTeX export classes
+*** COMMENT LaTeX export classes
 
 #+begin_src emacs-lisp
-          (setq org-latex-classes
-                          `(("memoir-article"
-                                  (,@ (concat  "\\documentclass[11pt,article,oneside,a4paper,x11names]{memoir}\n"
-                                               "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                               "% -- PACKAGES \n[PACKAGES]\n"
-                                               "% -- EXTRA \n[EXTRA]\n"
-                                               "\\counterwithout{section}{chapter}\n"
-                                               ))
-                                  ("\\section{%s}" . "\\section{%s}")
-                                  ("\\subsection{%s}" . "\\subsection{%s}")
-                                  ("\\subsubsection{%s}" . "\\subsubsection{%s}")
-                                  ("\\paragraph{%s}" . "\\paragraph{%s}")
-                                  ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
-                            ("memoir"
-                                  (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{memoir}\n"
-                                                "\\let\\newfloat\\undefined\n"
-                                               "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                               "% -- PACKAGES \n[PACKAGES]\n"
-                                               "% -- EXTRA \n[EXTRA]\n"
-                                               "\\counterwithout{section}{chapter}\n"
-                                               ))
-                                  ("\\chapter{%s}" . "\\chapter{%s}")
-                                  ("\\section{%s}" . "\\section{%s}")
-                                  ("\\subsection{%s}" . "\\subsection{%s}")
-                                  ("\\subsubsection{%s}" . "\\subsubsection{%s}")
-                                  ("\\paragraph{%s}" . "\\paragraph{%s}")
-                                  ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
-                            ("article"
-                                  (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
-                                               "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                               "% -- PACKAGES \n[PACKAGES]\n"
-                                               "% -- EXTRA \n[EXTRA]\n"
-                                               ))
-                                  ("\\section{%s}" . "\\section{%s}")
-                                  ("\\subsection{%s}" . "\\subsection{%s}")
-                                  ("\\subsubsection{%s}" . "\\subsubsection{%s}")
-                                  ("\\paragraph{%s}" . "\\paragraph{%s}")
-                                  ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
-                            ("book"
-                             (,@ (concat  "\\documentclass[]{book}\n"
-                                          "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                          "% -- PACKAGES \n[PACKAGES]\n"
-                                          "% -- EXTRA \n[EXTRA]\n"
-                                          ))
-                             ("\\chapter{%s}" . "\\chapter{%s}")
-                             ("\\section{%s}" . "\\section{%s}")
-                             ("\\subsection{%s}" . "\\subsection{%s}")
-                             ("\\subsubsection{%s}" . "\\subsubsection{%s}"))
-                            ("handout"
-                                  (,@ (concat  "\\documentclass[oneside,a4paper,]{tufte-handout}\n"
-                                               "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
-                                               "% -- PACKAGES \n[PACKAGES]\n"
-                                               "% -- EXTRA \n[EXTRA]\n"
-                                               ))
-                                  ("\\section{%s}" . "\\section{%s}")
-                                  ("\\subsection{%s}" . "\\subsection{%s}")
-                                  ("\\subsubsection{%s}" . "\\subsubsection{%s}")
-                                  ("\\paragraph{%s}" . "\\paragraph{%s}")
-                                  ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
-                            )
-                          )
+  (setq org-latex-classes
+        `(("memoir-article"
+           (,@ (concat  "\\documentclass[11pt,article,oneside,a4paper,x11names]{memoir}\n"
+                        "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                        "% -- PACKAGES \n[PACKAGES]\n"
+                        "% -- EXTRA \n[EXTRA]\n"
+                        "\\counterwithout{section}{chapter}\n"
+                        ))
+           ("\\section{%s}" . "\\section{%s}")
+           ("\\subsection{%s}" . "\\subsection{%s}")
+           ("\\subsubsection{%s}" . "\\subsubsection{%s}")
+           ("\\paragraph{%s}" . "\\paragraph{%s}")
+           ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
+          ("memoir"
+           (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{memoir}\n"
+                        "\\let\\newfloat\\undefined\n"
+                        "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                        "% -- PACKAGES \n[PACKAGES]\n"
+                        "% -- EXTRA \n[EXTRA]\n"
+                        "\\counterwithout{section}{chapter}\n"
+                        ))
+           ("\\chapter{%s}" . "\\chapter{%s}")
+           ("\\section{%s}" . "\\section{%s}")
+           ("\\subsection{%s}" . "\\subsection{%s}")
+           ("\\subsubsection{%s}" . "\\subsubsection{%s}")
+           ("\\paragraph{%s}" . "\\paragraph{%s}")
+           ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
+          ("article"
+           (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
+                        "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                        "% -- PACKAGES \n[PACKAGES]\n"
+                        "% -- EXTRA \n[EXTRA]\n"
+                        ))
+           ("\\section{%s}" . "\\section{%s}")
+           ("\\subsection{%s}" . "\\subsection{%s}")
+           ("\\subsubsection{%s}" . "\\subsubsection{%s}")
+           ("\\paragraph{%s}" . "\\paragraph{%s}")
+           ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
+          ("book"
+           (,@ (concat  "\\documentclass[]{book}\n"
+                        "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                        "% -- PACKAGES \n[PACKAGES]\n"
+                        "% -- EXTRA \n[EXTRA]\n"
+                        ))
+           ("\\chapter{%s}" . "\\chapter{%s}")
+           ("\\section{%s}" . "\\section{%s}")
+           ("\\subsection{%s}" . "\\subsection{%s}")
+           ("\\subsubsection{%s}" . "\\subsubsection{%s}"))
+          ("nusthesis"
+           (,@ (concat  "\\documentclass[a4paper]{nusthesis}\n"
+                        "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                        "% -- PACKAGES \n[PACKAGES]\n"
+                        "% -- EXTRA \n[EXTRA]\n"
+                        ))
+           ("\\chapter{%s}" . "\\chapter{%s}")
+           ("\\section{%s}" . "\\section{%s}")
+           ("\\subsection{%s}" . "\\subsection{%s}")
+           ("\\subsubsection{%s}" . "\\subsubsection{%s}"))
+          ("handout"
+           (,@ (concat  "\\documentclass[oneside,a4paper,]{tufte-handout}\n"
+                        "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                        "% -- PACKAGES \n[PACKAGES]\n"
+                        "% -- EXTRA \n[EXTRA]\n"
+                        ))
+           ("\\section{%s}" . "\\section{%s}")
+           ("\\subsection{%s}" . "\\subsection{%s}")
+           ("\\subsubsection{%s}" . "\\subsubsection{%s}")
+           ("\\paragraph{%s}" . "\\paragraph{%s}")
+           ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
+          )
+        )
 
-        (add-to-list 'org-latex-classes '("tufte-handout"
-                                                  "\\documentclass[11pt,a4paper,x11names]{tufte-handout}\n"
-                                                  ("\\section{%s}" . "\\section{%s}")
-                                                  ("\\subsection{%s}" . "\\subsection{%s}")
-                                                  ) 'append)
+  (add-to-list 'org-latex-classes `("bmcart"
+                                    (,@ (concat"\\documentclass[twocolumn]{bmcart}\n"
+                                    "% -- DEFAULT PACKAGES \n[NO-DEFAULT-PACKAGES]\n"
+                                    "% -- PACKAGES \n[NO-PACKAGES]\n"
+                                    "% -- EXTRA \n[EXTRA]\n"))
+                                    ("\\section*{%s}" . "\\section*{%s}")
+                                    ("\\subsection*{%s}" . "\\subsection*{%s}")
+                                    ("\\subsubsection*{%s}" . "\\subsubsection*{%s}")
+                                    ))
 
-        (require 'ox-beamer)
-        (add-to-list 'org-latex-classes
-                     '("beamer"
-                       "\\documentclass\[presentation\]\{beamer\}"
-                       ("\\section\{%s\}" . "\\section\{%s\}")
-                       ("\\subsection\{%s\}" . "\\subsection\{%s\}")
-                       ("\\subsubsection\{%s\}" . "\\subsubsection\{%s\}")))
+  (add-to-list 'org-latex-classes `("nusthesis"
+           (,@ (concat  "\\documentclass[twoside,a4paper]{nusthesis}\n"
+                        "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                        "% -- PACKAGES \n[PACKAGES]\n"
+                        "% -- EXTRA \n[EXTRA]\n"
+                        ))
+           ("\\chapter{%s}" . "\\chapter{%s}")
+           ("\\section{%s}" . "\\section{%s}")
+           ("\\subsection{%s}" . "\\subsection{%s}")
+           ("\\subsubsection{%s}" . "\\subsubsection{%s}")))
 
-        (defun my-beamer-bold (contents backend info)
-          (when (eq backend 'beamer)
-            (replace-regexp-in-string "\\`\\\\[A-Za-z0-9]+" "\\\\textbf" contents)))
+   (require 'ox-beamer)
+   (add-to-list 'org-latex-classes
+               '("beamer"
+                 "\\documentclass\[presentation\]\{beamer\}"
+                 ("\\section\{%s\}" . "\\section\{%s\}")
+                 ("\\subsection\{%s\}" . "\\subsection\{%s\}")
+                 ("\\subsubsection\{%s\}" . "\\subsubsection\{%s\}")))
 
-        (defun my-beamer-caption (contents backend info)
-          (when (eq backend 'beamer)
-            (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)))
+  (defun my-beamer-bold (contents backend info)
+    (when (eq backend 'beamer)
+      (replace-regexp-in-string "\\`\\\\[A-Za-z0-9]+" "\\\\textbf" contents)))
 
-        (defun my-beamer-figure (contents backend info)
-          (when (eq backend 'beamer)
-            (replace-regexp-in-string "\\\\begin\{figure\}\\[\\w+\\]" 
-  "" contents)))
+  (defun my-beamer-strikethrough-alert (contents backend info)
+    (when (eq backend 'beamer)
+      (replace-regexp-in-string "\\`\\\\[A-Za-z0-9]+" "\\\\alert" contents)))
+
+  (defun my-beamer-caption (contents backend info)
+    (when (eq backend 'beamer)
+      (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)))
+
+  (defun my-beamer-figure (contents backend info)
+    (when (eq backend 'beamer)
+      (replace-regexp-in-string "\\\\begin\{figure\}\\[\\w+\\]" 
+                                "" contents)))
 
 
-        (defvar gtk/org-latex-export-caption-num nil)
+  (defvar gtk/org-latex-export-caption-num nil)
 
 
-        (defun gtk/latex-export-caption-number-maybe (contents backend info)
-          (when (eq backend 'latex)
-            (if gtk/org-latex-export-caption-num
-                (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)
-              contents)))
+  (defun gtk/latex-export-caption-number-maybe (contents backend info)
+    (when (eq backend 'latex)
+      (if gtk/org-latex-export-caption-num
+          (replace-regexp-in-string "\\\\caption\{" "\\\\caption*{" contents)
+        contents)))
 
-      (add-to-list 'org-export-filter-final-output-functions 'gtk/latex-export-caption-number-maybe)
+  (add-to-list 'org-export-filter-final-output-functions 'gtk/latex-export-caption-number-maybe)
 
-      (defun my-latex-ref-to-cref (contents backend info)
-        "Org export filter to allow use cref in latex org export. Require use of cleveref"
-         (when (eq backend 'latex) (replace-regexp-in-string "\\\\ref\{" "\\\\cref{" contents)))
+  (defun my-latex-ref-to-cref (contents backend info)
+    "Org export filter to allow use cref in latex org export. Require use of cleveref"
+    (when (eq backend 'latex) (replace-regexp-in-string "\\\\ref\{" "\\\\cref{" contents)))
 
-        (add-to-list 'org-export-filter-final-output-functions 'my-beamer-caption)
-        (add-to-list 'org-export-filter-final-output-functions 'my-beamer-figure)
-      (add-to-list 'org-export-filter-bold-functions 'my-beamer-bold)
+  (add-to-list 'org-export-filter-final-output-functions 'my-beamer-caption)
+  (add-to-list 'org-export-filter-final-output-functions 'my-beamer-figure)
+  (add-to-list 'org-export-filter-bold-functions 'my-beamer-bold)
+  (add-to-list 'org-export-filter-strike-through-functions 'my-beamer-strikethrough-alert)
 
-      (add-to-list 'org-export-filter-final-output-functions 'my-latex-ref-to-cref)
+  ;;        (add-to-list 'org-export-filter-final-output-functions 'my-latex-ref-to-cref)
 
-        (setq org-export-allow-bind-keywords 't)
+  (setq org-export-allow-bind-keywords 't)
 #+end_src
 
 #+RESULTS:
 : t
+
 
 *** Removing captions in Beamer
 
@@ -1079,9 +1216,7 @@ This is probably going to need revision for version 8.0, to use the filter syste
 
 
 
-** File applications
 
-The variable org-file
 
 * RefTeX
 
@@ -1115,6 +1250,7 @@ The variable org-file
    'org-babel-load-languages
    '((emacs-lisp . t)
      (R . t)
+     (shell . t)    
      (dot . t)
      (ruby . t)
      (python . t)  ;; requires return statement
@@ -1130,10 +1266,15 @@ The variable org-file
 ** Org visuals
 #+begin_src emacs-lisp
     (setq org-attach-method 'ln)
-    
-    (setq org-use-property-inheritance '("PRIORITY" "STYLE"))
-    (setq org-agenda-dim-blocked-tasks 't)
-    
+    (setq org-agenda-span 'day)
+
+    (setq org-use-property-inheritance '("PRIORITY" "STYLE" "CATEGORY"))
+  (setq org-agenda-start-day "-1d")
+  (setq org-agenda-span 3)
+  (setq org-agenda-start-on-weekday nil)
+  (setq org-agenda-skip-scheduled-if-done t)
+  (setq org-agenda-skip-deadline-if-done t)
+
     (defun org-column-view-uses-fixed-width-face ()
       ;; copy from org-faces.el
       (when (fboundp 'set-face-attribute)
@@ -1146,9 +1287,9 @@ The variable org-file
                             :height (face-attribute 'default :height)
                             :family (face-attribute 'default :family)
                             )))
-    
+
   (setq org-fontify-done-headline t)
-  
+
   (custom-set-faces
    '(org-done ((t (:foreground "PaleGreen"   
                    :weight normal
@@ -1156,19 +1297,10 @@ The variable org-file
    '(org-headline-done 
               ((((class color) (min-colors 16) (background dark)) 
                  (:foreground "LightSalmon" :strike-through nil)))))
-  
+
     (when (and (fboundp 'daemonp) (daemonp))
       (add-hook 'org-mode-hook 'org-column-view-uses-fixed-width-face))
     (add-hook 'org-mode-hook 'org-column-view-uses-fixed-width-face)
-    
-#+end_src
-
-** TODO Task Juggler
-#+begin_src emacs-lisp :eval no :tangle no
-
-      (setq org-export-taskjuggler-project-tag "taskjuggler_project")
-      (setq org-export-taskjuggler-default-reports '("include
-      \"ganttexport.tji\""))
 
 #+end_src
 
@@ -1180,7 +1312,7 @@ editing of documents.
 
 A citation link
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :eval no :tangle no
     (org-add-link-type 
      "cite" nil
      (lambda (path desc format)
@@ -1229,7 +1361,7 @@ A citation link
 
 ** Pre-processing hooks for export
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle yes
   
   (defun my/org-export-ignoreheadings-hook (backend)
     "My backend aware export preprocess hook."
@@ -1251,62 +1383,22 @@ A citation link
 ** Publishing
 
 #+begin_src emacs-lisp
-    (let ((publishing-dir (expand-directory-name (concat dropbox-root "Public"))))
-      (setq org-publish-project-alist
-            `(("public"
-               :base-directory ,user-emacs-directory
-               :base-extension "org"
-               :publishing-directory ,publishing-dir
-               :publishing-function org-publish-org-to-html
-               )
-              ("FOS"
-               :base-directory ,(expand-directory-name (concat dropbox-root "/_support/DBS/FOS-web"))
-               :base-extension "org\\|css"
-;;               :publishing-directory ,(expand-directory-name (concat dropbox-root "/_support/DBS/FOS-web/target"))
-               :publishing-directory "/ftp:dbsgtk@staff.science.nus.edu.sg:/home/"
-               :publishing-function org-publish-org-to-html
-               ))))
-  
+  (let ((publishing-dir (expand-file-name "Public" dropbox-root)))
+    (setq org-publish-project-alist
+          `(("public"
+             :base-directory ,user-emacs-directory
+             :base-extension "org"
+             :publishing-directory ,publishing-dir
+             :publishing-function org-publish-org-to-html
+             )
+            ("FOS"
+             :base-directory ,(expand-file-name "_support/DBS/FOS-web" dropbox-root)
+             :base-extension "org\\|css"
+             :publishing-directory "/ftp:dbsgtk@staff.science.nus.edu.sg:/home/"
+             :publishing-function org-publish-org-to-html
+             ))))
+
 #+end_src
-
-** Org2blog                                                       :noexport:
-
-Naturally, I first learned about [[https://github.com/punchagan/org2blog][org2blog]] from Sacha Chua's
-[[http://sachachua.com/blog/][blog]]. Sacha's notes on her own [[http://dl.dropbox.com/u/3968124/sacha-emacs.html][configuration]] seem to indicate she
-doesn't use it any more, but has switched to a different one in ELPA.
-I'm not sure what I'm missing here, since the org2blog in ELPA is
-still the same as the one from punchagan.
-
-#+begin_src emacs-lisp :tangle no :eval no
-       (require 'org2blog-autoloads)
-       (require 'org2blog)
-#+end_src
-
-I added a feature to org2blog to allow mapping of Org source code
-blocks to WP shortcode blocks to WP can handle the syntax highlighting
-properly. This has a new ~defcustom~ called
-=org2blog/wp-shortcode-langs-map= that maps, by default, emacs-lisp to
-lisp and R to r.  So emacs-lisp source code blocks will be pretty
-formatted by the lisp formatter if the lisp SyntaxHighlighter brush is
-installed on WordPress. punchagan accepted this on the github version.
-I wonder when this will show up in the ELPA version?
-
-The code below is because some additional brushes are installed in my
-WordPress
-
-#+begin_src emacs-lisp :tangle no :eval no
-;;       (add-to-list 'org2blog/wp-sourcecode-langs "clojure")
-       (add-to-list 'org2blog/wp-sourcecode-langs "r")
-       (add-to-list 'org2blog/wp-sourcecode-langs "lisp")
-       (add-to-list 'org2blog/wp-sourcecode-langs "html")
-       (setq org2blog/wp-use-sourcecode-shortcode t)
-       (setq org2blog/wp-sourcecode-default-params nil)
-#+end_src
-
-
-** Slides
-
-
 
 
 
@@ -1326,15 +1418,13 @@ WordPress
 
 
 
-
-
 * Ivy, not ido or helm
 
 #+BEGIN_SRC emacs-lisp
   (require 'ivy)
   (ivy-mode 1)
-  ;(require 'counsel)
-  ;(counsel-mode 0)
+;;  (require 'counsel)
+;;  (counsel-mode 1)
 #+END_SRC
 * R
 
@@ -1348,6 +1438,7 @@ WordPress
          :init
          (progn 
            (setq-default ess-language "R")
+           (setq ess-eval-visibly 'nowait)
            ;(require 'r-autoyas)
            (add-to-list 'ess-style-alist
                         '(my-style
@@ -1369,20 +1460,20 @@ WordPress
   ;         (ess-toggle-S-assign nil)
            (ess-toggle-underscore nil)))
 
-    ;; (use-package poly-markdown
-    ;;   :ensure t
-    ;;   :pin melpa-stable)
+    (use-package poly-markdown
+      :ensure t
+      :pin melpa-stable)
 
-    ;; (use-package poly-R
-    ;;   :ensure t
-    ;;   :pin melpa-stable)
+    (use-package poly-R
+      :ensure t
+      :pin melpa-stable)
 
-       ;; (use-package polymode 
-       ;;      :ensure t
-       ;;      :mode
-       ;;      ("\\.Snw" . poly-noweb+r-mode)
-       ;;      ("\\.Rnw" . poly-noweb+r-mode)
-       ;;      ("\\.Rmd" . poly-markdown+r-mode))
+       (use-package polymode 
+            :ensure t
+            :mode
+            ("\\.Snw" . poly-noweb+r-mode)
+            ("\\.Rnw" . poly-noweb+r-mode)
+            ("\\.Rmd" . poly-markdown+r-mode))
 #+end_src
 
 
@@ -1455,36 +1546,54 @@ all events are correctly placed in the agenda.
 I had to remove cython and yasnippet extensions to not screw up
 org-mode.
 
-#+BEGIN_SRC emacs-lisp
-  (elpy-enable)
-  (defun gtk/elpy-send-line-or-region ()
-    (interactive)
-    (if (region-active-p)
-        (call-interactively 'elpy-shell-send-region-or-buffer)
-      (let ((region (elpy-shell--region-without-indentation
-                     (line-beginning-position) (line-end-position))))
-        (when (string-match "\t" region)
-          (warn (format-message
-                 "%s (%d): line or region contained tabs, this might cause weird errors"
-                 (buffer-name)
-                 (line-number-at-pos))))
-        (python-shell-send-string region)
-        (next-line))))
-
-  (setq python-shell-interpreter "python"
-        python-shell-interpreter-args "")
-  (bind-keys :map elpy-mode-map
-             ("C-c C-n" . gtk/elpy-send-line-or-region)
-             ("C-c n" . elpy-flymake-next-error))
-
-
-  (add-to-list 'python-shell-completion-native-disabled-interpreters "python3")
-  (global-hl-line-mode t)
-
-
-  (use-package expand-region
+#+BEGIN_SRC emacs-lisp :
+  (use-package elpy
+    :pin melpa-stable
+    :ensure t
+    :defer t
+    :init 
+    (defun enable-elpy-once ()
+      (elpy-enable)
+      (advice-remove 'python-mode 'enable-elpy-once))
+    (advice-add 'python-mode :before 'enable-elpy-once)
     :config
-    (bind-key "C-=" 'er/expand-region))
+    (setq ;;python-shell-interpreter "jupyter"
+     elpy-rpc-python-command "python3")
+    ;; (add-to-list 'python-shell-completion-native-disabled-interpreters "jupyter")
+    ;; (add-hook 'python-mode-hook (lambda () (flymake-mode 0))))
+    )
+
+
+    ;; (defun gtk/elpy-send-line-or-region ()
+    ;;   (interactive)
+    ;;   (if (region-active-p)
+    ;;       (call-interactively 'elpy-shell-send-region-or-buffer)
+    ;;     (let ((region (elpy-shell--region-without-indentation
+    ;;                    (line-beginning-position) (line-end-position))))
+    ;;       (when (string-match "\t" region)
+    ;;         (warn (format-message
+    ;;                "%s (%d): line or region contained tabs, this might cause weird errors"
+    ;;                (buffer-name)
+    ;;                (line-number-at-pos))))
+    ;;       (python-shell-send-string region)
+    ;;       (next-line))))
+
+  ;; (setq python-shell-interpreter "ipython"
+  ;;       python-shell-interpreter-args "")
+  ;;   (bind-keys :map elpy-mode-map
+  ;; ;;             ("C-c C-n" . gtk/elpy-send-line-or-region)
+  ;;              ("C-c n" . elpy-flymake-next-error))
+
+
+
+
+
+    (global-hl-line-mode t)
+
+
+    (use-package expand-region
+      :config
+      (bind-key "C-=" 'er/expand-region))
 #+END_SRC
 
 
@@ -1575,19 +1684,172 @@ org-mode.
 * Draft
 
 #+BEGIN_SRC emacs-lisp :eval yes :tangle yes
-  (use-package yaml-mode
-    :init
-    (add-hook 'yaml-mode-hook #'turn-off-auto-fill))
+    (use-package yaml-mode
+      :init
+      (add-hook 'yaml-mode-hook #'turn-off-auto-fill))
 
-(require 'flycheck-vale)
-(flycheck-vale-setup)
+  (use-package flycheck-vale
+    :ensure t
+    :config
+    (flycheck-vale-setup))
+
 #+END_SRC
 
 
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp 
   (setq org-file-apps
         '((auto-mode . emacs)
           ("\\.x?html?\\'" . "google-chrome %s")
           ("\\.pdf\\'" . "evince \"%s\"")
           ("\\.pdf::\\([0-9]+\\)\\'" . "evince \"%s\" -p %1")))
 #+END_SRC
+
+
+
+#+BEGIN_SRC emacs-lisp :tangle yes :eval yes
+
+  (use-package treemacs
+    :ensure t
+    :defer t
+    :init
+    (with-eval-after-load 'winum
+      (define-key winum-keymap (kbd "M-0") #'treemacs-select-window))
+    :config
+    (progn
+      (setq treemacs-collapse-dirs                 (if (treemacs--find-python3) 3 0)
+            treemacs-deferred-git-apply-delay      0.5
+            treemacs-display-in-side-window        t
+            treemacs-eldoc-display                 t
+            treemacs-file-event-delay              5000
+            treemacs-file-follow-delay             0.2
+            treemacs-follow-after-init             t
+            treemacs-git-command-pipe              ""
+            treemacs-goto-tag-strategy             'refetch-index
+            treemacs-indentation                   2
+            treemacs-indentation-string            " "
+            treemacs-is-never-other-window         nil
+            treemacs-max-git-entries               5000
+            treemacs-missing-project-action        'ask
+            treemacs-no-png-images                 nil
+            treemacs-no-delete-other-windows       t
+            treemacs-project-follow-cleanup        nil
+            treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
+            treemacs-recenter-distance             0.1
+            treemacs-recenter-after-file-follow    nil
+            treemacs-recenter-after-tag-follow     nil
+            treemacs-recenter-after-project-jump   'always
+            treemacs-recenter-after-project-expand 'on-distance
+            treemacs-show-cursor                   nil
+            treemacs-show-hidden-files             t
+            treemacs-silent-filewatch              nil
+            treemacs-silent-refresh                nil
+            treemacs-sorting                       'alphabetic-desc
+            treemacs-space-between-root-nodes      t
+            treemacs-tag-follow-cleanup            t
+            treemacs-tag-follow-delay              1.5
+            treemacs-width                         35)
+
+      ;; The default width and height of the icons is 22 pixels. If you are
+      ;; using a Hi-DPI display, uncomment this to double the icon size.
+      ;;(treemacs-resize-icons 44)
+
+      (treemacs-follow-mode t)
+      (treemacs-filewatch-mode t)
+      (treemacs-fringe-indicator-mode t)
+      (pcase (cons (not (null (executable-find "git")))
+                   (not (null (treemacs--find-python3))))
+        (`(t . t)
+         (treemacs-git-mode 'deferred))
+        (`(t . _)
+         (treemacs-git-mode 'simple))))
+    :bind
+    (:map global-map
+          ("M-0"       . treemacs-select-window)
+          ("C-x t 1"   . treemacs-delete-other-windows)
+          ("C-x t t"   . treemacs)
+          ("C-x t B"   . treemacs-bookmark)
+          ("C-x t C-t" . treemacs-find-file)
+          ("C-x t M-t" . treemacs-find-tag)))
+
+  (use-package treemacs-projectile
+    :after treemacs projectile
+    :ensure t)
+
+  (use-package treemacs-icons-dired
+    :after treemacs dired
+    :ensure t
+    :config (treemacs-icons-dired-mode))
+
+  (use-package treemacs-magit
+    :after treemacs magit
+    :ensure t)
+
+#+END_SRC
+
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package org-ref
+    :after org
+    :init
+    (setq org-ref-completion-library 'org-ref-ivy-cite))
+    (load-theme 'leuven t) 
+#+END_SRC
+
+
+
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq org-file-apps
+        '((auto-mode . emacs)
+          (directory . "setsid xdg-open \"%s\"")
+          ("\\.x?html?\\'" . "chrome \"%s\"")
+          ("\\.pdf\\'" . "evince \"%s\"")
+          ("\\.pdf::\\([0-9]+\\)\\'" . "evince \"%s\" -p %1")
+          ("\\.doc?x?\\'" . "libreoffice \"%s\"")))
+
+
+#+END_SRC
+
+
+#+begin_src emacs-lisp :tangle no
+(use-package lsp-mode
+  :hook (python-mode . lsp)
+  :commands lsp)
+
+;; optionally
+(use-package lsp-ui :commands lsp-ui-mode)
+(use-package company-lsp :commands company-lsp)
+;;(use-package helm-lsp :commands helm-lsp-workspace-symbol)
+(use-package lsp-treemacs :commands lsp-treemacs-errors-list)
+;; optionally if you want to use debugger
+;;(use-package dap-mode)
+
+#+end_src
+
+#+begin_src emacs-lisp :tangle no
+  ("article"
+                                  (,@ (concat  "\\documentclass[11pt,oneside,a4paper,x11names]{article}\n"
+                                               "% -- DEFAULT PACKAGES \n[DEFAULT-PACKAGES]\n"
+                                               "% -- PACKAGES \n[PACKAGES]\n"
+                                               "% -- EXTRA \n[EXTRA]\n"
+                                               ))
+                                  ("\\section{%s}" . "\\section{%s}")
+                                  ("\\subsection{%s}" . "\\subsection{%s}")
+                                  ("\\subsubsection{%s}" . "\\subsubsection{%s}")
+                                  ("\\paragraph{%s}" . "\\paragraph{%s}")
+                                  ("\\subparagraph{%s}" . "\\subparagraph{%s}"))
+#+end_src
+
+
+
+#+begin_src emacs-lisp
+  ;; unfilling
+
+  (defun unfill-paragraph (&optional region)
+        "Takes a multi-line paragraph and makes it into a single line of text."
+        (interactive (progn (barf-if-buffer-read-only) '(t)))
+        (let ((fill-column (point-max))
+              ;; This would override `fill-column' if it's an integer.
+              (emacs-lisp-docstring-fill-column t))
+          (fill-paragraph nil region)))
+#+end_src
